@@ -1,3 +1,6 @@
+# EASy68K Files
+*.S68
+
 # Prerequisites
 *.d
 
