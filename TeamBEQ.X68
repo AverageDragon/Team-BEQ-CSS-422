@@ -38,12 +38,14 @@ identifyOpcode:
 
 ; ------------------------------------------------------------
 ; "example" helper function
-; Jonathan
+; NAMEHERE
+
+; This is an example of a helper function. Use this format for helper
+; functions, as it will make it easier for us to tell the difference 
+; between the core routines and smaller helper functions.
 ; ------------------------------------------------------------
 example:
-        ; This is an example of a helper function. Use this format for helper
-        ; functions, as it will make it easier for us to tell the difference 
-        ; between the core routines and smaller helper functions.
+        
         RTS                 ; Return from decodeNOP subroutine
 
         END    main         ; last line of source
@@ -243,13 +245,14 @@ decodeBRA:
 ; Generic Helper Functions
 ; 
 ; Set of subroutines which do various tasks which are repeated frequently.
-; Each helper function should be commented with input and output.
+; Each helper function should be commented with required input and output.
+; 
 ; If input is required, request through D0, D1, etc
 ; Return using D0
 ; ========================================================================
 ; ------------------------------------------------------------
 ; example helper function
-; Jonathan
+; NAMEHERE
 ;
 ; Example of what a helper function might look like
 ; ------------------------------------------------------------

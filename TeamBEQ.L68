@@ -1,0 +1,64 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 5/6/2021 3:52:56 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : 68000 Disassembler (DASM)
+00000000                             3  * Written by : Team BEQ
+00000000                             4  *                Jonathan Hendrickson, Guiragos Guiragossian,
+00000000                             5  *                Dylan Thibault, Omar Nevarez
+00000000                             6  *
+00000000                             7  * Class      : CSS 422 A Sp 21 with Jim Hogg
+00000000                             8  * Description: A disassembler for 68k machine code.
+00000000                             9  *-----------------------------------------------------------
+00000000                            10  
+00000000                            11  ; Declare variables here
+00000000                            12  
+00000000                            13  ; ========================================================================
+00000000                            14  ; "main" routine
+00000000                            15  ; Dylan, Gary
+00000000                            16  ; 
+00000000                            17  ; TODO: DESCRIPTION OF MAIN ROUTINE FUNCTIONALITY
+00000000                            18  ; ========================================================================
+00001000                            19          ORG     $1000
+00001000                            20  
+00001000                            21  
+00001000  1C07                      22  main:   MOVE.B  D7, D6      ; Example instruction and comment
+00001002  FFFF FFFF                 23          SIMHALT             ; halt simulator
+00001006                            24          
+00001006                            25          
+00001006                            26  ; ========================================================================
+00001006                            27  ; "identifyOpcode" subroutine
+00001006                            28  ; Jonathan
+00001006                            29  ; 
+00001006                            30  ; Reads the Word at A2 and determines which opcode it represents.
+00001006                            31  ; When the opcode is identified, the appropriate "decodeX" subroutine
+00001006                            32  ; is invoked.
+00001006                            33  ; ========================================================================
+00001006                            34  identifyOpcode:
+00001006  1C07                      35          MOVE.B  D7, D6      ; Example instruction and comment
+00001008  4E75                      36          RTS                 ; Return from subroutine
+0000100A                            37          
+0000100A                            38  
+0000100A                            39  ; ------------------------------------------------------------
+0000100A                            40  ; "example" helper function
+0000100A                            41  ; Jonathan
+0000100A                            42  ; ------------------------------------------------------------
+0000100A                            43  example:
+0000100A                            44          ; This is an example of a helper function. Use this format for helper
+0000100A                            45          ; functions, as it will make it easier for us to tell the difference 
+0000100A                            46          ; between the core routines and smaller helper functions.
+0000100A  4E75                      47          RTS                 ; Return from decodeNOP subroutine
+0000100C                            48  
+0000100C                            49          END    main         ; last line of source
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+EXAMPLE             100A
+IDENTIFYOPCODE      1006
+MAIN                1000
