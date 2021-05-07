@@ -30,25 +30,103 @@ main:   MOVE.B  D7, D6      ; Example instruction and comment
 ; Reads the Word at A2 and determines which opcode it represents.
 ; When the opcode is identified, the appropriate "decodeX" subroutine
 ; is invoked.
+;
+; Uses a generated Trie structure to determine where to split on which bits
+; in order to efficiently identify the exact opcode
 ; ========================================================================
 identifyOpcode:
-        MOVE.B  D7, D6      ; Example instruction and comment
-        RTS                 ; Return from subroutine
+        BTST    #$F, (A2)   ; Check the 1st bit (from the left)
+        BEQ     split0      ; Split based on the first bit
+        BRA     split1
+
+split0: 
+        BTST    #$E, (A2)   ; Check the 2nd bit
+        BEQ     decodeMOVE  ; MOVE follows 00+
+        BRA     split01
         
+split01:
+        BTST    #$D, (A2)   ; Check the 3rd bit
+        BEQ     split0100   ; Code is 010, but all subcodes are 0100
+        BRA     split0110   ; Code is 011, but all subcodes are 0110        
 
-; ------------------------------------------------------------
-; "example" helper function
-; NAMEHERE
+split0100:
+        BTST    #$8, (A2)   ; Check the 8th bit for LEA
+        BNE     decodeLEA   ; LEA follows 0100XXX1+
+        BTST    #$B, (A2)   ; Check the 5th bit for NOT
+        BEQ     decodeNOT   ; NOT follows 01000+
+        BTST    #$9, (A2)   ; Check the 7th bit
+        BEQ     split01001x0
+        BRA     split0100111
 
-; This is an example of a helper function. Use this format for helper
-; functions, as it will make it easier for us to tell the difference 
-; between the core routines and smaller helper functions.
-; ------------------------------------------------------------
-example:
+split01001x0:
+        BTST    #$7, (A2)   ; Check the 9th bit for MOVEM
+        BNE     decodeMOVEM ; MOVEM follows 01001x001+
+        BTST    #$6, (A2)   ; Check the 10th bit
+        BEQ     decodeMULSL ; MULS.L follows 0100110000+
+        BRA     decodeDIVUL ; DIVU.L follows 0100110001+
+
+split0100111:
+        BTST    #$7, (A2)   ; Check the 9th bit for JSR
+        BNE     decodeJSR   ; JSR follows 010011101+
+        BTST    #$2, (A2)   ; Check the 14th bit
+        BEQ     decodeNOP   ; NOP follows 01001110011100+
+        BRA     decodeJSR   ; JSR follows 01001110011101+
+
+split0110:
+        BTST    #$B, (A2)   ; Check the 5th bit
+        BEQ     split01100
+        BRA     split01101
+
+split01100:
+        BTST    #$A, (A2)   ; Check the 6th bit
+        BEQ     decodeBRA   ; BRA starts with 011000
+        BRA     decodeBEQ   ; BEQ starts with 011001
         
-        RTS                 ; Return from decodeNOP subroutine
+split01101:
+        BTST    #$8, (A2)   ; Check the 8th bit
+        BEQ     decodeBGE   ; BGE starts with 01101100
+        BRA     decodeBLT   ; BLT starts with 01101101
+        
+split1: 
+        BTST    #$E, (A2)   ; Check the 2nd bit
+        BEQ     split10
+        BRA     split11
 
-        END    main         ; last line of source
+split10:
+        BTST    #$C, (A2)   ; Check the 4th bit
+        BEQ     decodeDIVUW ; DIVU.W follows 1000+
+        BRA     decodeSUB   ; SUB follows 1001+
+
+split11:
+        BTST    #$D, (A2)   ; Check the 3rd bit
+        BEQ     split110
+        BRA     split111
+
+split110:
+        BTST    #$C, (A2)   ; Check the 4th bit for ADD
+        BNE     decodeADD   ; ADD follows 1101+
+        BTST    #$8, (A2)   ; MULS.W has all 3 bits at 8, 9, and 10 set
+        BEQ     decodeAND   ; If any of these BTSTs show a 0, opcode is AND
+        BTST    #$7, (A2)
+        BEQ     decodeAND
+        BTST    #$6, (A2)
+        BEQ     decodeAND
+        BRA     decodeMULSW ; All 3 positions (8, 9, 10) contained 1s
+
+split111:
+        BTST    #$7, (A2)   ; The 9th and 10th bit are set for Memory Shifts
+        BEQ     regShift    ; If 9 or 10 are cleared, this is a register shift
+        BTST    #$6, (A2)
+        BEQ     regShift
+        BTST    #$9, (A2)   ; Check 7th bit
+        BEQ     decodeASx_M ; ASL_ASR Memory Shift follows 1110000x11+
+        BRA     decodeLSx_M ; LSL_LSR Memory Shift follows 1110001x11+
+
+regShift: ; Special split specifically for ASx/LSx Register Shifts
+        BTST    #$4, (A2)   ; Check the 12th bit
+        BEQ     decodeASx_R ; ASL_ASR Register Shift follows 1110xxxxxxx01+
+        BEQ     decodeLSx_M ; LSL_LSR Register Shift follows 1110xxxxxxx00+
+        
         
         
 ; ========================================================================
@@ -121,25 +199,47 @@ decodeSUB:
 
 
 ; ------------------------------------------------------------
-; 6. "decodeMULS" subroutine
+; 6a. "decodeMULSW" subroutine
 ; AUTHOR
 ;
-; TODO: DESCRIPTION
+; TODO: DESCRIPTION MULS.W
 ; ------------------------------------------------------------
-decodeMULS:
+decodeMULSW:
         ; Put code here
-        RTS                 ; Return from decodeMULS subroutine
+        RTS                 ; Return from decodeMULSW subroutine
 
 
 ; ------------------------------------------------------------
-; 7. "decodeDIVU" subroutine
+; 6b. "decodeMULSL" subroutine
 ; AUTHOR
 ;
-; TODO: DESCRIPTION
+; TODO: DESCRIPTION MULS.L
 ; ------------------------------------------------------------
-decodeDIVU:
+decodeMULSL:
         ; Put code here
-        RTS                 ; Return from decodeDIVU subroutine
+        RTS                 ; Return from decodeMULSL subroutine
+        
+        
+; ------------------------------------------------------------
+; 7a. "decodeDIVUW" subroutine
+; AUTHOR
+;
+; TODO: DESCRIPTION DIVU.W
+; ------------------------------------------------------------
+decodeDIVUW:
+        ; Put code here
+        RTS                 ; Return from decodeDIVUW subroutine
+
+
+; ------------------------------------------------------------
+; 7b. "decodeDIVUL" subroutine
+; AUTHOR
+;
+; TODO: DESCRIPTION DIVU.L
+; ------------------------------------------------------------
+decodeDIVUL:
+        ; Put code here
+        RTS                 ; Return from decodeDIVUL subroutine
 
 
 ; ------------------------------------------------------------
@@ -176,36 +276,80 @@ decodeNOT:
 
 
 ; ------------------------------------------------------------
-; 11. "decodeLSL_LSR" subroutine
+; 11a. "decodeLSx_M" subroutine
+; AUTHOR
+;
+; TODO: DESCRIPTION - LSL or LSR Memory Shift
+; ------------------------------------------------------------
+decodeLSx_M:
+        ; Put code here
+        RTS                 ; Return from decodeLSx_M subroutine
+
+
+; ------------------------------------------------------------
+; 11b. "decodeLSx_R" subroutine
+; AUTHOR
+;
+; TODO: DESCRIPTION - LSL or LSR Register Shift
+; ------------------------------------------------------------
+decodeLSx_R:
+        ; Put code here
+        RTS                 ; Return from ddecodeLSx_R subroutine
+
+
+; ------------------------------------------------------------
+; 12a. "decodeASx_M" subroutine
+; AUTHOR
+;
+; TODO: DESCRIPTION - ASL or ASR Memory Shift
+; ------------------------------------------------------------
+decodeASx_M:
+        ; Put code here
+        RTS                 ; Return from decodeASx_M subroutine
+
+
+; ------------------------------------------------------------
+; 12b. "decodeASx_R" subroutine
+; AUTHOR
+;
+; TODO: DESCRIPTION - ASL or ASR Register Shift
+; ------------------------------------------------------------
+decodeASx_R:
+        ; Put code here
+        RTS                 ; Return from decodeASx_R subroutine
+
+
+; ------------------------------------------------------------
+; 13a. "decodeBEQ" subroutine
 ; AUTHOR
 ;
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
-decodeLSL_LSR:
+decodeBEQ:
         ; Put code here
-        RTS                 ; Return from decodeLSL_LSR subroutine
+        RTS                 ; Return from decodeBEQ subroutine
 
 
 ; ------------------------------------------------------------
-; 12. "decodeASL_ASR" subroutine
+; 13b. "decodeBGE" subroutine
 ; AUTHOR
 ;
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
-decodeASL_ASR:
+decodeBGE:
         ; Put code here
-        RTS                 ; Return from decodeASL_ASR subroutine
+        RTS                 ; Return from decodeBGE subroutine
 
 
 ; ------------------------------------------------------------
-; 13. "decodeBcc" subroutine
+; 13c. "decodeBLT" subroutine
 ; AUTHOR
 ;
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
-decodeBcc:
+decodeBLT:
         ; Put code here
-        RTS                 ; Return from decodeBcc subroutine
+        RTS                 ; Return from decodeBLT subroutine
 
 
 ; ------------------------------------------------------------
