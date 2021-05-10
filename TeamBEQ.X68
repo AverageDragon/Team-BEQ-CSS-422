@@ -19,7 +19,10 @@
         ORG     $1000
 
 
-main:   MOVE.B  D7, D6      ; Example instruction and comment
+main:   LEA     $6000, A2      ; Testing identifyOpcode
+        MOVE.W  #$E540, (A2)
+        JSR     identifyOpcode
+        
         SIMHALT             ; halt simulator
         
         
@@ -35,95 +38,89 @@ main:   MOVE.B  D7, D6      ; Example instruction and comment
 ; in order to efficiently identify the exact opcode
 ; ========================================================================
 identifyOpcode:
-        BTST    #$F, (A2)   ; Check the 1st bit (from the left)
+        MOVE.W  (A2), D0    ; Move the value at A2 into D0 for bit testing
+        BTST    #$F, D0     ; Check the 1st bit (from the left)
         BEQ     split0      ; Split based on the first bit
         BRA     split1
 
 split0: 
-        BTST    #$E, (A2)   ; Check the 2nd bit
+        BTST    #$E, D0     ; Check the 2nd bit
         BEQ     decodeMOVE  ; MOVE follows 00+
         BRA     split01
         
 split01:
-        BTST    #$D, (A2)   ; Check the 3rd bit
+        BTST    #$D, D0     ; Check the 3rd bit
         BEQ     split0100   ; Code is 010, but all subcodes are 0100
         BRA     split0110   ; Code is 011, but all subcodes are 0110        
 
 split0100:
-        BTST    #$8, (A2)   ; Check the 8th bit for LEA
+        BTST    #$8, D0     ; Check the 8th bit for LEA
         BNE     decodeLEA   ; LEA follows 0100XXX1+
-        BTST    #$B, (A2)   ; Check the 5th bit for NOT
+        BTST    #$B, D0     ; Check the 5th bit for NOT
         BEQ     decodeNOT   ; NOT follows 01000+
-        BTST    #$9, (A2)   ; Check the 7th bit
-        BEQ     split01001x0
+        BTST    #$9, D0     ; Check the 7th bit
+        BEQ     decodeMOVEM ; MOVEM follows 01001x0+
         BRA     split0100111
 
-split01001x0:
-        BTST    #$7, (A2)   ; Check the 9th bit for MOVEM
-        BNE     decodeMOVEM ; MOVEM follows 01001x001+
-        BTST    #$6, (A2)   ; Check the 10th bit
-        BEQ     decodeMULSL ; MULS.L follows 0100110000+
-        BRA     decodeDIVUL ; DIVU.L follows 0100110001+
-
 split0100111:
-        BTST    #$7, (A2)   ; Check the 9th bit for JSR
+        BTST    #$7, D0     ; Check the 9th bit for JSR
         BNE     decodeJSR   ; JSR follows 010011101+
-        BTST    #$2, (A2)   ; Check the 14th bit
+        BTST    #$2, D0     ; Check the 14th bit
         BEQ     decodeNOP   ; NOP follows 01001110011100+
-        BRA     decodeJSR   ; JSR follows 01001110011101+
+        BRA     decodeRTS   ; RTS follows 01001110011101+
 
 split0110:
-        BTST    #$B, (A2)   ; Check the 5th bit
+        BTST    #$B, D0     ; Check the 5th bit
         BEQ     split01100
         BRA     split01101
 
 split01100:
-        BTST    #$A, (A2)   ; Check the 6th bit
+        BTST    #$A, D0     ; Check the 6th bit
         BEQ     decodeBRA   ; BRA starts with 011000
         BRA     decodeBEQ   ; BEQ starts with 011001
         
 split01101:
-        BTST    #$8, (A2)   ; Check the 8th bit
+        BTST    #$8, D0     ; Check the 8th bit
         BEQ     decodeBGE   ; BGE starts with 01101100
         BRA     decodeBLT   ; BLT starts with 01101101
         
 split1: 
-        BTST    #$E, (A2)   ; Check the 2nd bit
+        BTST    #$E, D0     ; Check the 2nd bit
         BEQ     split10
         BRA     split11
 
 split10:
-        BTST    #$C, (A2)   ; Check the 4th bit
+        BTST    #$C, D0     ; Check the 4th bit
         BEQ     decodeDIVUW ; DIVU.W follows 1000+
         BRA     decodeSUB   ; SUB follows 1001+
 
 split11:
-        BTST    #$D, (A2)   ; Check the 3rd bit
+        BTST    #$D, D0     ; Check the 3rd bit
         BEQ     split110
         BRA     split111
 
 split110:
-        BTST    #$C, (A2)   ; Check the 4th bit for ADD
+        BTST    #$C, D0     ; Check the 4th bit for ADD
         BNE     decodeADD   ; ADD follows 1101+
-        BTST    #$8, (A2)   ; MULS.W has all 3 bits at 8, 9, and 10 set
+        BTST    #$8, D0     ; MULS.W has all 3 bits at 8, 9, and 10 set
         BEQ     decodeAND   ; If any of these BTSTs show a 0, opcode is AND
-        BTST    #$7, (A2)
+        BTST    #$7, D0
         BEQ     decodeAND
-        BTST    #$6, (A2)
+        BTST    #$6, D0
         BEQ     decodeAND
-        BRA     decodeMULSW ; All 3 positions (8, 9, 10) contained 1s
+        BRA     decodeMULSW ; All 3 positions (8, 9, 10) were set
 
 split111:
-        BTST    #$7, (A2)   ; The 9th and 10th bit are set for Memory Shifts
+        BTST    #$7, D0     ; The 9th and 10th bit are set for Memory Shifts
         BEQ     regShift    ; If 9 or 10 are cleared, this is a register shift
-        BTST    #$6, (A2)
+        BTST    #$6, D0
         BEQ     regShift
-        BTST    #$9, (A2)   ; Check 7th bit
+        BTST    #$9, D0     ; Check 7th bit
         BEQ     decodeASx_M ; ASL_ASR Memory Shift follows 1110000x11+
         BRA     decodeLSx_M ; LSL_LSR Memory Shift follows 1110001x11+
 
 regShift: ; Special split specifically for ASx/LSx Register Shifts
-        BTST    #$4, (A2)   ; Check the 12th bit
+        BTST    #$4, D0     ; Check the 12th bit
         BEQ     decodeASx_R ; ASL_ASR Register Shift follows 1110xxxxxxx01+
         BEQ     decodeLSx_M ; LSL_LSR Register Shift follows 1110xxxxxxx00+
         
@@ -207,17 +204,6 @@ decodeSUB:
 decodeMULSW:
         ; Put code here
         RTS                 ; Return from decodeMULSW subroutine
-
-
-; ------------------------------------------------------------
-; 6b. "decodeMULSL" subroutine
-; AUTHOR
-;
-; TODO: DESCRIPTION MULS.L
-; ------------------------------------------------------------
-decodeMULSL:
-        ; Put code here
-        RTS                 ; Return from decodeMULSL subroutine
         
         
 ; ------------------------------------------------------------
@@ -229,17 +215,6 @@ decodeMULSL:
 decodeDIVUW:
         ; Put code here
         RTS                 ; Return from decodeDIVUW subroutine
-
-
-; ------------------------------------------------------------
-; 7b. "decodeDIVUL" subroutine
-; AUTHOR
-;
-; TODO: DESCRIPTION DIVU.L
-; ------------------------------------------------------------
-decodeDIVUL:
-        ; Put code here
-        RTS                 ; Return from decodeDIVUL subroutine
 
 
 ; ------------------------------------------------------------
@@ -406,6 +381,7 @@ exampleHelp:
 
 
         END    main         ; last line of source
+
 
 
 *~Font name~Courier New~
