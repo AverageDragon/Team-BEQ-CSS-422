@@ -1,6 +1,6 @@
 00001000 Starting Address
 Assembler used: EASy68K Editor/Assembler v5.16.01
-Created On: 5/10/2021 2:54:43 PM
+Created On: 5/10/2021 5:46:30 PM
 
 00000000                             1  *-----------------------------------------------------------
 00000000                             2  * Title      : 68000 Disassembler (DASM)
@@ -12,407 +12,448 @@ Created On: 5/10/2021 2:54:43 PM
 00000000                             8  * Description: A disassembler for 68k machine code.
 00000000                             9  *-----------------------------------------------------------
 00000000                            10  
-00000000                            11  ; Declare variables here
-00000000                            12  
+00000000                            11  ; ========================================================================
+00000000                            12  ; Variables
 00000000                            13  ; ========================================================================
-00000000                            14  ; "main" routine
-00000000                            15  ; Dylan, Gary
-00000000                            16  ; 
-00000000                            17  ; TODO: DESCRIPTION OF MAIN ROUTINE FUNCTIONALITY
-00000000                            18  ; ========================================================================
-00001000                            19          ORG     $1000
-00001000                            20  
-00001000                            21  
-00001000  45F8 6000                 22  main:   LEA     $6000, A2      ; Example instruction and comment
-00001004  34BC E540                 23          MOVE.W   #$E540, (A2)
-00001008  4EB9 00001012             24          JSR identifyOpcode
-0000100E  FFFF FFFF                 25          SIMHALT             ; halt simulator
-00001012                            26          
-00001012                            27          
-00001012                            28  ; ========================================================================
-00001012                            29  ; "identifyOpcode" subroutine
-00001012                            30  ; Jonathan
-00001012                            31  ; 
-00001012                            32  ; Reads the Word at A2 and determines which opcode it represents.
-00001012                            33  ; When the opcode is identified, the appropriate "decodeX" subroutine
-00001012                            34  ; is invoked.
-00001012                            35  ;
-00001012                            36  ; Uses a generated Trie structure to determine where to split on which bits
-00001012                            37  ; in order to efficiently identify the exact opcode
-00001012                            38  ; ========================================================================
-00001012                            39  identifyOpcode:
-00001012  3012                      40          MOVE.W  (A2), D0    ; Move the value at A2 into D0 for bit testing
-00001014  0800 000F                 41          BTST    #$F, D0   ; Check the 1st bit (from the left)
-00001018  6700 0006                 42          BEQ     split0      ; Split based on the first bit
-0000101C  6000 0082                 43          BRA     split1
-00001020                            44  
-00001020                            45  split0: 
-00001020  0800 000E                 46          BTST    #$E, D0   ; Check the 2nd bit
-00001024  6700 00EC                 47          BEQ     decodeMOVE  ; MOVE follows 00+
-00001028  6000 0002                 48          BRA     split01
-0000102C                            49          
-0000102C                            50  split01:
-0000102C  0800 000D                 51          BTST    #$D, D0   ; Check the 3rd bit
-00001030  6700 0006                 52          BEQ     split0100   ; Code is 010, but all subcodes are 0100
-00001034  6000 0046                 53          BRA     split0110   ; Code is 011, but all subcodes are 0110        
-00001038                            54  
-00001038                            55  split0100:
-00001038  0800 0008                 56          BTST    #$8, D0   ; Check the 8th bit for LEA
-0000103C  6600 00E4                 57          BNE     decodeLEA   ; LEA follows 0100XXX1+
-00001040  0800 000B                 58          BTST    #$B, D0   ; Check the 5th bit for NOT
-00001044  6700 00E0                 59          BEQ     decodeNOT   ; NOT follows 01000+
-00001048  0800 0009                 60          BTST    #$9, D0   ; Check the 7th bit
-0000104C  6700 0006                 61          BEQ     split01001x0
-00001050  6000 0016                 62          BRA     split0100111
-00001054                            63  
-00001054                            64  split01001x0:
-00001054  0800 0007                 65          BTST    #$7, D0   ; Check the 9th bit for MOVEM
-00001058  6600 00BA                 66          BNE     decodeMOVEM ; MOVEM follows 01001x001+
-0000105C  0800 0006                 67          BTST    #$6, D0   ; Check the 10th bit
-00001060  6700 00BA                 68          BEQ     decodeMULSL ; MULS.L follows 0100110000+ (unused?)
-00001064  6000 00BA                 69          BRA     decodeDIVUL ; DIVU.L follows 0100110001+ (unused?)
-00001068                            70  
-00001068                            71  split0100111:
-00001068  0800 0007                 72          BTST    #$7, D0   ; Check the 9th bit for JSR
-0000106C  6600 00C8                 73          BNE     decodeJSR   ; JSR follows 010011101+
-00001070  0800 0002                 74          BTST    #$2, D0   ; Check the 14th bit
-00001074  6700 009A                 75          BEQ     decodeNOP   ; NOP follows 01001110011100+
-00001078  6000 00BE                 76          BRA     decodeRTS   ; RTS follows 01001110011101+
-0000107C                            77  
-0000107C                            78  split0110:
-0000107C  0800 000B                 79          BTST    #$B, D0   ; Check the 5th bit
-00001080  6700 0006                 80          BEQ     split01100
-00001084  6000 000E                 81          BRA     split01101
-00001088                            82  
-00001088                            83  split01100:
-00001088  0800 000A                 84          BTST    #$A, D0   ; Check the 6th bit
-0000108C  6700 00AC                 85          BEQ     decodeBRA   ; BRA starts with 011000
-00001090  6000 009E                 86          BRA     decodeBEQ   ; BEQ starts with 011001
-00001094                            87          
-00001094                            88  split01101:
-00001094  0800 0008                 89          BTST    #$8, D0   ; Check the 8th bit
-00001098  6700 0098                 90          BEQ     decodeBGE   ; BGE starts with 01101100
-0000109C  6000 0096                 91          BRA     decodeBLT   ; BLT starts with 01101101
-000010A0                            92          
-000010A0                            93  split1: 
-000010A0  0800 000E                 94          BTST    #$E, D0   ; Check the 2nd bit
-000010A4  6700 0006                 95          BEQ     split10
-000010A8  6000 000E                 96          BRA     split11
-000010AC                            97  
-000010AC                            98  split10:
-000010AC  0800 000C                 99          BTST    #$C, D0   ; Check the 4th bit
-000010B0  6700 006C                100          BEQ     decodeDIVUW ; DIVU.W follows 1000+
-000010B4  6000 0062                101          BRA     decodeSUB   ; SUB follows 1001+
-000010B8                           102  
-000010B8                           103  split11:
-000010B8  0800 000D                104          BTST    #$D, D0   ; Check the 3rd bit
-000010BC  6700 0006                105          BEQ     split110
-000010C0  6000 0026                106          BRA     split111
-000010C4                           107  
-000010C4                           108  split110:
-000010C4  0800 000C                109          BTST    #$C, D0   ; Check the 4th bit for ADD
-000010C8  6600 004C                110          BNE     decodeADD   ; ADD follows 1101+
-000010CC  0800 0008                111          BTST    #$8, D0   ; MULS.W has all 3 bits at 8, 9, and 10 set
-000010D0  6700 0052                112          BEQ     decodeAND   ; If any of these BTSTs show a 0, opcode is AND
-000010D4  0800 0007                113          BTST    #$7, D0
-000010D8  6700 004A                114          BEQ     decodeAND
-000010DC  0800 0006                115          BTST    #$6, D0
-000010E0  6700 0042                116          BEQ     decodeAND
-000010E4  6000 0034                117          BRA     decodeMULSW ; All 3 positions (8, 9, 10) contained 1s
-000010E8                           118  
-000010E8                           119  split111:
-000010E8  0800 0007                120          BTST    #$7, D0   ; The 9th and 10th bit are set for Memory Shifts
-000010EC  6700 0016                121          BEQ     regShift    ; If 9 or 10 are cleared, this is a register shift
-000010F0  0800 0006                122          BTST    #$6, D0
-000010F4  6700 000E                123          BEQ     regShift
-000010F8  0800 0009                124          BTST    #$9, D0   ; Check 7th bit
-000010FC  6700 002E                125          BEQ     decodeASx_M ; ASL_ASR Memory Shift follows 1110000x11+
-00001100  6000 0026                126          BRA     decodeLSx_M ; LSL_LSR Memory Shift follows 1110001x11+
-00001104                           127  
-00001104                           128  regShift: ; Special split specifically for ASx/LSx Register Shifts
-00001104  0800 0004                129          BTST    #$4, D0   ; Check the 12th bit
-00001108  6700 0024                130          BEQ     decodeASx_R ; ASL_ASR Register Shift follows 1110xxxxxxx01+
-0000110C  6700 001A                131          BEQ     decodeLSx_M ; LSL_LSR Register Shift follows 1110xxxxxxx00+
-00001110                           132          
-00001110                           133          
-00001110                           134          
-00001110                           135  ; ========================================================================
-00001110                           136  ; "decodeX" subroutines
-00001110                           137  ; Gary, Dylan
-00001110                           138  ; 
-00001110                           139  ; Set of subroutines which are invoked by identifyOpcode.
-00001110                           140  ; A decodeX subroutine will read from A2 and use TRAP #15 to output
-00001110                           141  ; the instruction.
-00001110                           142  ;
-00001110                           143  ; For example, the "decodeLEA" subroutine will read A2 (which contains the
-00001110                           144  ; opcode) to record the parameters (such as destination register). If the
-00001110                           145  ; opcode indicates that the next word represents a destination address, then
-00001110                           146  ; decodeLEA will advance A2 to the next word and decode that.
-00001110                           147  ; To finish, decodeLEA will output the decoded instruction with TRAP #15
-00001110                           148  ; ========================================================================
-00001110                           149  ; ------------------------------------------------------------
-00001110                           150  ; 1. "decodeNOP" subroutine
-00001110                           151  ; AUTHOR
-00001110                           152  ;
-00001110                           153  ; TODO: DESCRIPTION
-00001110                           154  ; ------------------------------------------------------------
-00001110                           155  decodeNOP:
-00001110                           156          ; Put code here
-00001110  4E75                     157          RTS                 ; Return from decodeNOP subroutine
-00001112                           158  
-00001112                           159  
-00001112                           160  ; ------------------------------------------------------------
-00001112                           161  ; 2. "decodeMOVE" subroutine
-00001112                           162  ; AUTHOR
-00001112                           163  ;
-00001112                           164  ; TODO: DESCRIPTION
-00001112                           165  ; ------------------------------------------------------------
-00001112                           166  decodeMOVE:
-00001112                           167          ; Put code here
-00001112  4E75                     168          RTS                 ; Return from decodeMOVE subroutine
-00001114                           169  
-00001114                           170  
-00001114                           171  ; ------------------------------------------------------------
-00001114                           172  ; 3. "decodeMOVEM" subroutine
-00001114                           173  ; AUTHOR
-00001114                           174  ;
-00001114                           175  ; TODO: DESCRIPTION
-00001114                           176  ; ------------------------------------------------------------
-00001114                           177  decodeMOVEM:
-00001114                           178          ; Put code here
-00001114  4E75                     179          RTS                 ; Return from decodeMOVEM subroutine
-00001116                           180  
-00001116                           181  
-00001116                           182  ; ------------------------------------------------------------
-00001116                           183  ; 4. "decodeADD" subroutine
-00001116                           184  ; AUTHOR
-00001116                           185  ;
-00001116                           186  ; TODO: DESCRIPTION
-00001116                           187  ; ------------------------------------------------------------
-00001116                           188  decodeADD:
-00001116                           189          ; Put code here
-00001116  4E75                     190          RTS                 ; Return from decodeADD subroutine
-00001118                           191  
-00001118                           192  
-00001118                           193  ; ------------------------------------------------------------
-00001118                           194  ; 5. "decodeSUB" subroutine
-00001118                           195  ; AUTHOR
-00001118                           196  ;
-00001118                           197  ; TODO: DESCRIPTION
-00001118                           198  ; ------------------------------------------------------------
-00001118                           199  decodeSUB:
-00001118                           200          ; Put code here
-00001118  4E75                     201          RTS                 ; Return from decodeSUB subroutine
-0000111A                           202  
-0000111A                           203  
-0000111A                           204  ; ------------------------------------------------------------
-0000111A                           205  ; 6a. "decodeMULSW" subroutine
-0000111A                           206  ; AUTHOR
-0000111A                           207  ;
-0000111A                           208  ; TODO: DESCRIPTION MULS.W
-0000111A                           209  ; ------------------------------------------------------------
-0000111A                           210  decodeMULSW:
-0000111A                           211          ; Put code here
-0000111A  4E75                     212          RTS                 ; Return from decodeMULSW subroutine
-0000111C                           213  
-0000111C                           214  
-0000111C                           215  ; ------------------------------------------------------------
-0000111C                           216  ; 6b. "decodeMULSL" subroutine
-0000111C                           217  ; AUTHOR
-0000111C                           218  ;
-0000111C                           219  ; TODO: DESCRIPTION MULS.L
-0000111C                           220  ; ------------------------------------------------------------
-0000111C                           221  decodeMULSL:
-0000111C                           222          ; Put code here
-0000111C  4E75                     223          RTS                 ; Return from decodeMULSL subroutine
-0000111E                           224          
-0000111E                           225          
-0000111E                           226  ; ------------------------------------------------------------
-0000111E                           227  ; 7a. "decodeDIVUW" subroutine
-0000111E                           228  ; AUTHOR
-0000111E                           229  ;
-0000111E                           230  ; TODO: DESCRIPTION DIVU.W
-0000111E                           231  ; ------------------------------------------------------------
-0000111E                           232  decodeDIVUW:
-0000111E                           233          ; Put code here
-0000111E  4E75                     234          RTS                 ; Return from decodeDIVUW subroutine
-00001120                           235  
-00001120                           236  
-00001120                           237  ; ------------------------------------------------------------
-00001120                           238  ; 7b. "decodeDIVUL" subroutine
-00001120                           239  ; AUTHOR
-00001120                           240  ;
-00001120                           241  ; TODO: DESCRIPTION DIVU.L
-00001120                           242  ; ------------------------------------------------------------
-00001120                           243  decodeDIVUL:
-00001120                           244          ; Put code here
-00001120  4E75                     245          RTS                 ; Return from decodeDIVUL subroutine
-00001122                           246  
-00001122                           247  
-00001122                           248  ; ------------------------------------------------------------
-00001122                           249  ; 8. "decodeLEA" subroutine
-00001122                           250  ; AUTHOR
-00001122                           251  ;
-00001122                           252  ; TODO: DESCRIPTION
-00001122                           253  ; ------------------------------------------------------------
-00001122                           254  decodeLEA:
-00001122                           255          ; Put code here
-00001122  4E75                     256          RTS                 ; Return from decodeLEA subroutine
-00001124                           257  
-00001124                           258  
-00001124                           259  ; ------------------------------------------------------------
-00001124                           260  ; 9. "decodeAND" subroutine
-00001124                           261  ; AUTHOR
-00001124                           262  ;
-00001124                           263  ; TODO: DESCRIPTION
-00001124                           264  ; ------------------------------------------------------------
-00001124                           265  decodeAND:
-00001124                           266          ; Put code here
-00001124  4E75                     267          RTS                 ; Return from decodeAND subroutine
-00001126                           268  
-00001126                           269  
-00001126                           270  ; ------------------------------------------------------------
-00001126                           271  ; 10. "decodeNOT" subroutine
-00001126                           272  ; AUTHOR
-00001126                           273  ;
-00001126                           274  ; TODO: DESCRIPTION
-00001126                           275  ; ------------------------------------------------------------
-00001126                           276  decodeNOT:
-00001126                           277          ; Put code here
-00001126  4E75                     278          RTS                 ; Return from decodeNOT subroutine
-00001128                           279  
-00001128                           280  
-00001128                           281  ; ------------------------------------------------------------
-00001128                           282  ; 11a. "decodeLSx_M" subroutine
-00001128                           283  ; AUTHOR
-00001128                           284  ;
-00001128                           285  ; TODO: DESCRIPTION - LSL or LSR Memory Shift
-00001128                           286  ; ------------------------------------------------------------
-00001128                           287  decodeLSx_M:
-00001128                           288          ; Put code here
-00001128  4E75                     289          RTS                 ; Return from decodeLSx_M subroutine
-0000112A                           290  
-0000112A                           291  
-0000112A                           292  ; ------------------------------------------------------------
-0000112A                           293  ; 11b. "decodeLSx_R" subroutine
-0000112A                           294  ; AUTHOR
-0000112A                           295  ;
-0000112A                           296  ; TODO: DESCRIPTION - LSL or LSR Register Shift
-0000112A                           297  ; ------------------------------------------------------------
-0000112A                           298  decodeLSx_R:
-0000112A                           299          ; Put code here
-0000112A  4E75                     300          RTS                 ; Return from ddecodeLSx_R subroutine
-0000112C                           301  
-0000112C                           302  
-0000112C                           303  ; ------------------------------------------------------------
-0000112C                           304  ; 12a. "decodeASx_M" subroutine
-0000112C                           305  ; AUTHOR
-0000112C                           306  ;
-0000112C                           307  ; TODO: DESCRIPTION - ASL or ASR Memory Shift
-0000112C                           308  ; ------------------------------------------------------------
-0000112C                           309  decodeASx_M:
-0000112C                           310          ; Put code here
-0000112C  4E75                     311          RTS                 ; Return from decodeASx_M subroutine
-0000112E                           312  
-0000112E                           313  
-0000112E                           314  ; ------------------------------------------------------------
-0000112E                           315  ; 12b. "decodeASx_R" subroutine
-0000112E                           316  ; AUTHOR
-0000112E                           317  ;
-0000112E                           318  ; TODO: DESCRIPTION - ASL or ASR Register Shift
-0000112E                           319  ; ------------------------------------------------------------
-0000112E                           320  decodeASx_R:
-0000112E                           321          ; Put code here
-0000112E  4E75                     322          RTS                 ; Return from decodeASx_R subroutine
-00001130                           323  
-00001130                           324  
-00001130                           325  ; ------------------------------------------------------------
-00001130                           326  ; 13a. "decodeBEQ" subroutine
-00001130                           327  ; AUTHOR
-00001130                           328  ;
-00001130                           329  ; TODO: DESCRIPTION
-00001130                           330  ; ------------------------------------------------------------
-00001130                           331  decodeBEQ:
-00001130                           332          ; Put code here
-00001130  4E75                     333          RTS                 ; Return from decodeBEQ subroutine
-00001132                           334  
-00001132                           335  
-00001132                           336  ; ------------------------------------------------------------
-00001132                           337  ; 13b. "decodeBGE" subroutine
-00001132                           338  ; AUTHOR
-00001132                           339  ;
-00001132                           340  ; TODO: DESCRIPTION
-00001132                           341  ; ------------------------------------------------------------
-00001132                           342  decodeBGE:
-00001132                           343          ; Put code here
-00001132  4E75                     344          RTS                 ; Return from decodeBGE subroutine
-00001134                           345  
-00001134                           346  
-00001134                           347  ; ------------------------------------------------------------
-00001134                           348  ; 13c. "decodeBLT" subroutine
-00001134                           349  ; AUTHOR
-00001134                           350  ;
-00001134                           351  ; TODO: DESCRIPTION
-00001134                           352  ; ------------------------------------------------------------
-00001134                           353  decodeBLT:
-00001134                           354          ; Put code here
-00001134  4E75                     355          RTS                 ; Return from decodeBLT subroutine
-00001136                           356  
-00001136                           357  
-00001136                           358  ; ------------------------------------------------------------
-00001136                           359  ; 14. "decodeJSR" subroutine
-00001136                           360  ; AUTHOR
-00001136                           361  ;
-00001136                           362  ; TODO: DESCRIPTION
-00001136                           363  ; ------------------------------------------------------------
-00001136                           364  decodeJSR:
-00001136                           365          ; Put code here
-00001136  4E75                     366          RTS                 ; Return from decodeJSR subroutine
-00001138                           367  
-00001138                           368  
-00001138                           369  ; ------------------------------------------------------------
-00001138                           370  ; 15. "decodeRTS" subroutine
-00001138                           371  ; AUTHOR
-00001138                           372  ;
-00001138                           373  ; TODO: DESCRIPTION
-00001138                           374  ; ------------------------------------------------------------
-00001138                           375  decodeRTS:
-00001138                           376          ; Put code here
-00001138  4E75                     377          RTS                 ; Return from decodeRTS subroutine
-0000113A                           378  
-0000113A                           379  
-0000113A                           380  ; ------------------------------------------------------------
-0000113A                           381  ; 16. "decodeBRA" subroutine
-0000113A                           382  ; AUTHOR
-0000113A                           383  ;
-0000113A                           384  ; TODO: DESCRIPTION
-0000113A                           385  ; ------------------------------------------------------------
-0000113A                           386  decodeBRA:
-0000113A                           387          ; Put code here
-0000113A  4E75                     388          RTS                 ; Return from decodeBRA subroutine
-0000113C                           389  
-0000113C                           390  
-0000113C                           391  ; ========================================================================
-0000113C                           392  ; Generic Helper Functions
-0000113C                           393  ; 
-0000113C                           394  ; Set of subroutines which do various tasks which are repeated frequently.
-0000113C                           395  ; Each helper function should be commented with required input and output.
-0000113C                           396  ; 
-0000113C                           397  ; If input is required, request through D0, D1, etc
-0000113C                           398  ; Return using D0
-0000113C                           399  ; ========================================================================
-0000113C                           400  ; ------------------------------------------------------------
-0000113C                           401  ; example helper function
-0000113C                           402  ; NAMEHERE
-0000113C                           403  ;
-0000113C                           404  ; Example of what a helper function might look like
-0000113C                           405  ; ------------------------------------------------------------
-0000113C                           406  exampleHelp:
-0000113C                           407          ; Put code here
-0000113C  4E75                     408          RTS                 ; Return from decodeBRA subroutine
-0000113E                           409  
-0000113E                           410  
-0000113E                           411          END    main         ; last line of source
+00000000                            14  
+00000000                            15  ; ------------------------------------------------------------
+00000000                            16  ; "Pattern" Variables
+00000000                            17  ; Jonathan
+00000000                            18  ; 
+00000000                            19  ; Set of strings to be used with verifyOpcode to check that the patterns match
+00000000                            20  ; and the opcode isn't actually data
+00000000                            21  ; ------------------------------------------------------------
+00000000                            22  
+00000000                            23  
+00000000                            24  ; ========================================================================
+00000000                            25  ; Macros
+00000000                            26  ; ========================================================================
+00000000                            27  
+00000000                            28  ; ------------------------------------------------------------
+00000000                            29  ; "verifyOpcode" Macro
+00000000                            30  ; Jonathan
+00000000                            31  ;
+00000000                            32  ; 1st argument is a template string (e.g. "0100...111......" for ADD)
+00000000                            33  ; 2nd argument is a data register to check against the template
+00000000                            34  ;
+00000000                            35  ; Verifies that the opcode passed through \2 matches the pattern of \1
+00000000                            36  ; If they do not match, branches to outputData
+00000000                            37  ; ------------------------------------------------------------
+00000000                            38  verifyOpcode:  MACRO
+00000000                            39          LEA     \1, A1      ; Input pattern string
+00000000                            40          MOVE.W  \2, D0      ; input value
+00000000                            41          MOVE.B  #15, D1     ; Counter tracking the bit position of D0
+00000000                            42          
+00000000                            43  vLoop:  CMP.B   #$30, (A1)  ; contains 0
+00000000                            44          BEQ     vCheckFor0
+00000000                            45          CMP.B   #$31, (A1)  ; Check for 1
+00000000                            46          BEQ     vCheckFor1
+00000000                            47          BRA     vNext       ; Wildcard, no check on this bit
+00000000                            48          
+00000000                            49  vCheckFor0: 
+00000000                            50          BTST    D1, D0      ; Check if contains 0
+00000000                            51          BNE     outputData  ; Missing a 0 -> Not a valid opcode
+00000000                            52          BRA     vNext
+00000000                            53  
+00000000                            54  vCheckFor1:
+00000000                            55          BTST    D1, D0      ; Check if contains 1
+00000000                            56          BEQ     outputData  ; Missing a 1 -> Not a valid opcode
+00000000                            57  
+00000000                            58  vNext:  CMP.B   #0, D1      ; Compare bit counter to 0
+00000000                            59          BEQ     vComplete   ; Branch to complete if bit counter reached 0
+00000000                            60          SUB.B   #1, D1      ; Continuing loop -> Decrement bit counter
+00000000                            61          MOVE.B  (A1)+, D3   ; Move A1 to the next pointer (D3 irrelevant)
+00000000                            62          BRA     vLoop       ; Begin loop again
+00000000                            63  
+00000000                            64  vComplete:  ; Opcode has been verified
+00000000                            65          ENDM
+00000000                            66  
+00000000                            67  
+00000000                            68  
+00000000                            69  
+00000000                            70  
+00000000                            71  
+00000000                            72  ; +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+00000000                            73  ; "main" routine
+00000000                            74  ; Dylan, Gary
+00000000                            75  ; 
+00000000                            76  ; TODO: DESCRIPTION OF MAIN ROUTINE FUNCTIONALITY
+00000000                            77  ; ========================================================================
+00001000                            78          ORG     $1000
+00001000                            79  
+00001000                            80  
+00001000  45F8 6000                 81  main:   LEA     $6000, A2      ; Testing identifyOpcode
+00001004  34BC E540                 82          MOVE.W  #$E540, (A2)
+00001008  4EB9 00001012             83          JSR     identifyOpcode
+0000100E                            84          
+0000100E  FFFF FFFF                 85          SIMHALT             ; halt simulator
+00001012                            86          
+00001012                            87          
+00001012                            88  ; ========================================================================
+00001012                            89  ; "identifyOpcode" subroutine
+00001012                            90  ; Jonathan
+00001012                            91  ; 
+00001012                            92  ; Reads the Word at A2 and determines which opcode it represents.
+00001012                            93  ; When the opcode is identified, the appropriate "decodeX" subroutine
+00001012                            94  ; is invoked.
+00001012                            95  ;
+00001012                            96  ; Uses a generated Trie structure to determine where to split on which bits
+00001012                            97  ; in order to efficiently identify the exact opcode
+00001012                            98  ; ========================================================================
+00001012                            99  identifyOpcode:
+00001012  3012                     100          MOVE.W  (A2), D0    ; Move the value at A2 into D0 for bit testing
+00001014  0800 000F                101          BTST    #$F, D0     ; Check the 1st bit (from the left)
+00001018  6700 0006                102          BEQ     split0      ; Split based on the first bit
+0000101C  6000 006E                103          BRA     split1
+00001020                           104  
+00001020                           105  split0: 
+00001020  0800 000E                106          BTST    #$E, D0     ; Check the 2nd bit
+00001024  6700 00D8                107          BEQ     decodeMOVE  ; MOVE follows 00+
+00001028  6000 0002                108          BRA     split01
+0000102C                           109          
+0000102C                           110  split01:
+0000102C  0800 000D                111          BTST    #$D, D0     ; Check the 3rd bit
+00001030  6700 0006                112          BEQ     split0100   ; Code is 010, but all subcodes are 0100
+00001034  6000 0032                113          BRA     split0110   ; Code is 011, but all subcodes are 0110        
+00001038                           114  
+00001038                           115  split0100:
+00001038  0800 0008                116          BTST    #$8, D0     ; Check the 8th bit for LEA
+0000103C  6600 00CC                117          BNE     decodeLEA   ; LEA follows 0100XXX1+
+00001040  0800 000B                118          BTST    #$B, D0     ; Check the 5th bit for NOT
+00001044  6700 00C8                119          BEQ     decodeNOT   ; NOT follows 01000+
+00001048  0800 0009                120          BTST    #$9, D0     ; Check the 7th bit
+0000104C  6700 00B2                121          BEQ     decodeMOVEM ; MOVEM follows 01001x0+
+00001050  6000 0002                122          BRA     split0100111
+00001054                           123  
+00001054                           124  split0100111:
+00001054  0800 0007                125          BTST    #$7, D0     ; Check the 9th bit for JSR
+00001058  6600 00C4                126          BNE     decodeJSR   ; JSR follows 010011101+
+0000105C  0800 0002                127          BTST    #$2, D0     ; Check the 14th bit
+00001060  6700 009A                128          BEQ     decodeNOP   ; NOP follows 01001110011100+
+00001064  6000 00BA                129          BRA     decodeRTS   ; RTS follows 01001110011101+
+00001068                           130  
+00001068                           131  split0110:
+00001068  0800 000B                132          BTST    #$B, D0     ; Check the 5th bit
+0000106C  6700 0006                133          BEQ     split01100
+00001070  6000 000E                134          BRA     split01101
+00001074                           135  
+00001074                           136  split01100:
+00001074  0800 000A                137          BTST    #$A, D0     ; Check the 6th bit
+00001078  6700 00A8                138          BEQ     decodeBRA   ; BRA starts with 011000
+0000107C  6000 009A                139          BRA     decodeBEQ   ; BEQ starts with 011001
+00001080                           140          
+00001080                           141  split01101:
+00001080  0800 0008                142          BTST    #$8, D0     ; Check the 8th bit
+00001084  6700 0094                143          BEQ     decodeBGE   ; BGE starts with 01101100
+00001088  6000 0092                144          BRA     decodeBLT   ; BLT starts with 01101101
+0000108C                           145          
+0000108C                           146  split1: 
+0000108C  0800 000E                147          BTST    #$E, D0     ; Check the 2nd bit
+00001090  6700 0006                148          BEQ     split10
+00001094  6000 000E                149          BRA     split11
+00001098                           150  
+00001098                           151  split10:
+00001098  0800 000C                152          BTST    #$C, D0     ; Check the 4th bit
+0000109C  6700 006A                153          BEQ     decodeDIVU  ; DIVU follows 1000+
+000010A0  6000 0062                154          BRA     decodeSUB   ; SUB follows 1001+
+000010A4                           155  
+000010A4                           156  split11:
+000010A4  0800 000D                157          BTST    #$D, D0     ; Check the 3rd bit
+000010A8  6700 0006                158          BEQ     split110
+000010AC  6000 0026                159          BRA     split111
+000010B0                           160  
+000010B0                           161  split110:
+000010B0  0800 000C                162          BTST    #$C, D0     ; Check the 4th bit for ADD
+000010B4  6600 004C                163          BNE     decodeADD   ; ADD follows 1101+
+000010B8  0800 0008                164          BTST    #$8, D0     ; MULS.W has all 3 bits at 8, 9, and 10 set
+000010BC  6700 004E                165          BEQ     decodeAND   ; If any of these BTSTs show a 0, opcode is AND
+000010C0  0800 0007                166          BTST    #$7, D0
+000010C4  6700 0046                167          BEQ     decodeAND
+000010C8  0800 0006                168          BTST    #$6, D0
+000010CC  6700 003E                169          BEQ     decodeAND
+000010D0  6000 0034                170          BRA     decodeMULS  ; All 3 positions (8, 9, 10) were set
+000010D4                           171  
+000010D4                           172  split111:
+000010D4  0800 0007                173          BTST    #$7, D0     ; The 9th and 10th bit are set for Memory Shifts
+000010D8  6700 0016                174          BEQ     regShift    ; If 9 or 10 are cleared, this is a register shift
+000010DC  0800 0006                175          BTST    #$6, D0
+000010E0  6700 000E                176          BEQ     regShift
+000010E4  0800 0009                177          BTST    #$9, D0     ; Check 7th bit
+000010E8  6700 002A                178          BEQ     decodeASx_M ; ASL_ASR Memory Shift follows 1110000x11+
+000010EC  6000 0022                179          BRA     decodeLSx_M ; LSL_LSR Memory Shift follows 1110001x11+
+000010F0                           180  
+000010F0                           181  regShift: ; Special split specifically for ASx/LSx Register Shifts
+000010F0  0800 0004                182          BTST    #$4, D0     ; Check the 12th bit
+000010F4  6700 0020                183          BEQ     decodeASx_R ; ASL_ASR Register Shift follows 1110xxxxxxx01+
+000010F8  6700 0016                184          BEQ     decodeLSx_M ; LSL_LSR Register Shift follows 1110xxxxxxx00+
+000010FC                           185  
+000010FC                           186  
+000010FC                           187  
+000010FC                           188  
+000010FC                           189  ; ========================================================================
+000010FC                           190  ; "decodeX" subroutines
+000010FC                           191  ; Gary, Dylan
+000010FC                           192  ; 
+000010FC                           193  ; Set of subroutines which are invoked by identifyOpcode.
+000010FC                           194  ; A decodeX subroutine will read from A2 and use TRAP #15 to output
+000010FC                           195  ; the instruction.
+000010FC                           196  ;
+000010FC                           197  ; For example, the "decodeLEA" subroutine will read A2 (which contains the
+000010FC                           198  ; opcode) to record the parameters (such as destination register). If the
+000010FC                           199  ; opcode indicates that the next word represents a destination address, then
+000010FC                           200  ; decodeLEA will advance A2 to the next word and decode that.
+000010FC                           201  ; To finish, decodeLEA will output the decoded instruction with TRAP #15
+000010FC                           202  ; ========================================================================
+000010FC                           203  
+000010FC                           204  ; ------------------------------------------------------------
+000010FC                           205  ; 1. "decodeNOP" subroutine
+000010FC                           206  ; AUTHOR
+000010FC                           207  ;
+000010FC                           208  ; TODO: DESCRIPTION
+000010FC                           209  ; ------------------------------------------------------------
+000010FC                           210  decodeNOP:
+000010FC                           211          ; Put code here
+000010FC  4E75                     212          RTS                 ; Return from decodeNOP subroutine
+000010FE                           213  
+000010FE                           214  
+000010FE                           215  ; ------------------------------------------------------------
+000010FE                           216  ; 2. "decodeMOVE" subroutine
+000010FE                           217  ; AUTHOR
+000010FE                           218  ;
+000010FE                           219  ; TODO: DESCRIPTION
+000010FE                           220  ; ------------------------------------------------------------
+000010FE                           221  decodeMOVE:
+000010FE                           222          ; Put code here
+000010FE  4E75                     223          RTS                 ; Return from decodeMOVE subroutine
+00001100                           224  
+00001100                           225  
+00001100                           226  ; ------------------------------------------------------------
+00001100                           227  ; 3. "decodeMOVEM" subroutine
+00001100                           228  ; AUTHOR
+00001100                           229  ;
+00001100                           230  ; TODO: DESCRIPTION
+00001100                           231  ; ------------------------------------------------------------
+00001100                           232  decodeMOVEM:
+00001100                           233          ; Put code here
+00001100  4E75                     234          RTS                 ; Return from decodeMOVEM subroutine
+00001102                           235  
+00001102                           236  
+00001102                           237  ; ------------------------------------------------------------
+00001102                           238  ; 4. "decodeADD" subroutine
+00001102                           239  ; AUTHOR
+00001102                           240  ;
+00001102                           241  ; TODO: DESCRIPTION
+00001102                           242  ; ------------------------------------------------------------
+00001102                           243  decodeADD:
+00001102                           244          ; Put code here
+00001102  4E75                     245          RTS                 ; Return from decodeADD subroutine
+00001104                           246  
+00001104                           247  
+00001104                           248  ; ------------------------------------------------------------
+00001104                           249  ; 5. "decodeSUB" subroutine
+00001104                           250  ; AUTHOR
+00001104                           251  ;
+00001104                           252  ; TODO: DESCRIPTION
+00001104                           253  ; ------------------------------------------------------------
+00001104                           254  decodeSUB:
+00001104                           255          ; Put code here
+00001104  4E75                     256          RTS                 ; Return from decodeSUB subroutine
+00001106                           257  
+00001106                           258  
+00001106                           259  ; ------------------------------------------------------------
+00001106                           260  ; 6. "decodeMULS" subroutine
+00001106                           261  ; AUTHOR
+00001106                           262  ;
+00001106                           263  ; TODO: DESCRIPTION MULS
+00001106                           264  ; ------------------------------------------------------------
+00001106                           265  decodeMULS:
+00001106                           266          ; Put code here
+00001106  4E75                     267          RTS                 ; Return from decodeMULS subroutine
+00001108                           268          
+00001108                           269          
+00001108                           270  ; ------------------------------------------------------------
+00001108                           271  ; 7. "decodeDIVU" subroutine
+00001108                           272  ; AUTHOR
+00001108                           273  ;
+00001108                           274  ; TODO: DESCRIPTION DIVU
+00001108                           275  ; ------------------------------------------------------------
+00001108                           276  decodeDIVU:
+00001108                           277          ; Put code here
+00001108  4E75                     278          RTS                 ; Return from decodeDIVU subroutine
+0000110A                           279  
+0000110A                           280  
+0000110A                           281  ; ------------------------------------------------------------
+0000110A                           282  ; 8. "decodeLEA" subroutine
+0000110A                           283  ; AUTHOR
+0000110A                           284  ;
+0000110A                           285  ; TODO: DESCRIPTION
+0000110A                           286  ; ------------------------------------------------------------
+0000110A                           287  decodeLEA:
+0000110A                           288          ; Put code here
+0000110A  4E75                     289          RTS                 ; Return from decodeLEA subroutine
+0000110C                           290  
+0000110C                           291  
+0000110C                           292  ; ------------------------------------------------------------
+0000110C                           293  ; 9. "decodeAND" subroutine
+0000110C                           294  ; AUTHOR
+0000110C                           295  ;
+0000110C                           296  ; TODO: DESCRIPTION
+0000110C                           297  ; ------------------------------------------------------------
+0000110C                           298  decodeAND:
+0000110C                           299          ; Put code here
+0000110C  4E75                     300          RTS                 ; Return from decodeAND subroutine
+0000110E                           301  
+0000110E                           302  
+0000110E                           303  ; ------------------------------------------------------------
+0000110E                           304  ; 10. "decodeNOT" subroutine
+0000110E                           305  ; AUTHOR
+0000110E                           306  ;
+0000110E                           307  ; TODO: DESCRIPTION
+0000110E                           308  ; ------------------------------------------------------------
+0000110E                           309  decodeNOT:
+0000110E                           310          ; Put code here
+0000110E  4E75                     311          RTS                 ; Return from decodeNOT subroutine
+00001110                           312  
+00001110                           313  
+00001110                           314  ; ------------------------------------------------------------
+00001110                           315  ; 11a. "decodeLSx_M" subroutine
+00001110                           316  ; AUTHOR
+00001110                           317  ;
+00001110                           318  ; TODO: DESCRIPTION - LSL or LSR Memory Shift
+00001110                           319  ; ------------------------------------------------------------
+00001110                           320  decodeLSx_M:
+00001110                           321          ; Put code here
+00001110  4E75                     322          RTS                 ; Return from decodeLSx_M subroutine
+00001112                           323  
+00001112                           324  
+00001112                           325  ; ------------------------------------------------------------
+00001112                           326  ; 11b. "decodeLSx_R" subroutine
+00001112                           327  ; AUTHOR
+00001112                           328  ;
+00001112                           329  ; TODO: DESCRIPTION - LSL or LSR Register Shift
+00001112                           330  ; ------------------------------------------------------------
+00001112                           331  decodeLSx_R:
+00001112                           332          ; Put code here
+00001112  4E75                     333          RTS                 ; Return from ddecodeLSx_R subroutine
+00001114                           334  
+00001114                           335  
+00001114                           336  ; ------------------------------------------------------------
+00001114                           337  ; 12a. "decodeASx_M" subroutine
+00001114                           338  ; AUTHOR
+00001114                           339  ;
+00001114                           340  ; TODO: DESCRIPTION - ASL or ASR Memory Shift
+00001114                           341  ; ------------------------------------------------------------
+00001114                           342  decodeASx_M:
+00001114                           343          ; Put code here
+00001114  4E75                     344          RTS                 ; Return from decodeASx_M subroutine
+00001116                           345  
+00001116                           346  
+00001116                           347  ; ------------------------------------------------------------
+00001116                           348  ; 12b. "decodeASx_R" subroutine
+00001116                           349  ; AUTHOR
+00001116                           350  ;
+00001116                           351  ; TODO: DESCRIPTION - ASL or ASR Register Shift
+00001116                           352  ; ------------------------------------------------------------
+00001116                           353  decodeASx_R:
+00001116                           354          ; Put code here
+00001116  4E75                     355          RTS                 ; Return from decodeASx_R subroutine
+00001118                           356  
+00001118                           357  
+00001118                           358  ; ------------------------------------------------------------
+00001118                           359  ; 13a. "decodeBEQ" subroutine
+00001118                           360  ; AUTHOR
+00001118                           361  ;
+00001118                           362  ; TODO: DESCRIPTION
+00001118                           363  ; ------------------------------------------------------------
+00001118                           364  decodeBEQ:
+00001118                           365          ; Put code here
+00001118  4E75                     366          RTS                 ; Return from decodeBEQ subroutine
+0000111A                           367  
+0000111A                           368  
+0000111A                           369  ; ------------------------------------------------------------
+0000111A                           370  ; 13b. "decodeBGE" subroutine
+0000111A                           371  ; AUTHOR
+0000111A                           372  ;
+0000111A                           373  ; TODO: DESCRIPTION
+0000111A                           374  ; ------------------------------------------------------------
+0000111A                           375  decodeBGE:
+0000111A                           376          ; Put code here
+0000111A  4E75                     377          RTS                 ; Return from decodeBGE subroutine
+0000111C                           378  
+0000111C                           379  
+0000111C                           380  ; ------------------------------------------------------------
+0000111C                           381  ; 13c. "decodeBLT" subroutine
+0000111C                           382  ; AUTHOR
+0000111C                           383  ;
+0000111C                           384  ; TODO: DESCRIPTION
+0000111C                           385  ; ------------------------------------------------------------
+0000111C                           386  decodeBLT:
+0000111C                           387          ; Put code here
+0000111C  4E75                     388          RTS                 ; Return from decodeBLT subroutine
+0000111E                           389  
+0000111E                           390  
+0000111E                           391  ; ------------------------------------------------------------
+0000111E                           392  ; 14. "decodeJSR" subroutine
+0000111E                           393  ; AUTHOR
+0000111E                           394  ;
+0000111E                           395  ; TODO: DESCRIPTION
+0000111E                           396  ; ------------------------------------------------------------
+0000111E                           397  decodeJSR:
+0000111E                           398          ; Put code here
+0000111E  4E75                     399          RTS                 ; Return from decodeJSR subroutine
+00001120                           400  
+00001120                           401  
+00001120                           402  ; ------------------------------------------------------------
+00001120                           403  ; 15. "decodeRTS" subroutine
+00001120                           404  ; AUTHOR
+00001120                           405  ;
+00001120                           406  ; TODO: DESCRIPTION
+00001120                           407  ; ------------------------------------------------------------
+00001120                           408  decodeRTS:
+00001120                           409          ; Put code here
+00001120  4E75                     410          RTS                 ; Return from decodeRTS subroutine
+00001122                           411  
+00001122                           412  
+00001122                           413  ; ------------------------------------------------------------
+00001122                           414  ; 16. "decodeBRA" subroutine
+00001122                           415  ; AUTHOR
+00001122                           416  ;
+00001122                           417  ; TODO: DESCRIPTION
+00001122                           418  ; ------------------------------------------------------------
+00001122                           419  decodeBRA:
+00001122                           420          ; Put code here
+00001122  4E75                     421          RTS                 ; Return from decodeBRA subroutine
+00001124                           422  
+00001124                           423  
+00001124                           424  
+00001124                           425  
+00001124                           426  ; ========================================================================
+00001124                           427  ; Generic Helper Functions
+00001124                           428  ; 
+00001124                           429  ; Set of subroutines which do various tasks which are repeated frequently.
+00001124                           430  ; Each helper function should be commented with required input and output.
+00001124                           431  ; 
+00001124                           432  ; If input is required, request through D0, D1, etc
+00001124                           433  ; Return using D0
+00001124                           434  ; ========================================================================
+00001124                           435  
+00001124                           436  ; ------------------------------------------------------------
+00001124                           437  ; outputData
+00001124                           438  ; Jonathan
+00001124                           439  ;
+00001124                           440  ; When an invalid opcode is found, outputs it as data
+00001124                           441  ; ------------------------------------------------------------
+00001124                           442  outputData:
+00001124                           443          ; Put code here
+00001124  4E75                     444          RTS                 ; Return from decodeBRA subroutine
+00001126                           445  
+00001126                           446  
+00001126                           447  
+00001126                           448  
+00001126                           449  
+00001126                           450  ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+00001126                           451                              ; End of Code
+00001126                           452          END    main         ; last line of source
 
 No errors detected
 No warnings generated
@@ -421,42 +462,40 @@ No warnings generated
 SYMBOL TABLE INFORMATION
 Symbol-name         Value
 -------------------------
-DECODEADD           1116
-DECODEAND           1124
-DECODEASX_M         112C
-DECODEASX_R         112E
-DECODEBEQ           1130
-DECODEBGE           1132
-DECODEBLT           1134
-DECODEBRA           113A
-DECODEDIVUL         1120
-DECODEDIVUW         111E
-DECODEJSR           1136
-DECODELEA           1122
-DECODELSX_M         1128
-DECODELSX_R         112A
-DECODEMOVE          1112
-DECODEMOVEM         1114
-DECODEMULSL         111C
-DECODEMULSW         111A
-DECODENOP           1110
-DECODENOT           1126
-DECODERTS           1138
-DECODESUB           1118
-EXAMPLEHELP         113C
+DECODEADD           1102
+DECODEAND           110C
+DECODEASX_M         1114
+DECODEASX_R         1116
+DECODEBEQ           1118
+DECODEBGE           111A
+DECODEBLT           111C
+DECODEBRA           1122
+DECODEDIVU          1108
+DECODEJSR           111E
+DECODELEA           110A
+DECODELSX_M         1110
+DECODELSX_R         1112
+DECODEMOVE          10FE
+DECODEMOVEM         1100
+DECODEMULS          1106
+DECODENOP           10FC
+DECODENOT           110E
+DECODERTS           1120
+DECODESUB           1104
 IDENTIFYOPCODE      1012
 MAIN                1000
-REGSHIFT            1104
+OUTPUTDATA          1124
+REGSHIFT            10F0
 SPLIT0              1020
 SPLIT01             102C
 SPLIT0100           1038
-SPLIT0100111        1068
-SPLIT01001X0        1054
-SPLIT0110           107C
-SPLIT01100          1088
-SPLIT01101          1094
-SPLIT1              10A0
-SPLIT10             10AC
-SPLIT11             10B8
-SPLIT110            10C4
-SPLIT111            10E8
+SPLIT0100111        1054
+SPLIT0110           1068
+SPLIT01100          1074
+SPLIT01101          1080
+SPLIT1              108C
+SPLIT10             1098
+SPLIT11             10A4
+SPLIT110            10B0
+SPLIT111            10D4
+VERIFYOPCODE        0

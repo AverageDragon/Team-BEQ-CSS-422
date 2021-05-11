@@ -8,9 +8,68 @@
 * Description: A disassembler for 68k machine code.
 *-----------------------------------------------------------
 
-; Declare variables here
+; ========================================================================
+; Variables
+; ========================================================================
+
+; ------------------------------------------------------------
+; "Pattern" Variables
+; Jonathan
+; 
+; Set of strings to be used with verifyOpcode to check that the patterns match
+; and the opcode isn't actually data
+; ------------------------------------------------------------
+
 
 ; ========================================================================
+; Macros
+; ========================================================================
+
+; ------------------------------------------------------------
+; "verifyOpcode" Macro
+; Jonathan
+;
+; 1st argument is a template string (e.g. "0100...111......" for ADD)
+; 2nd argument is a data register to check against the template
+;
+; Verifies that the opcode passed through \2 matches the pattern of \1
+; If they do not match, branches to outputData
+; ------------------------------------------------------------
+verifyOpcode:  MACRO
+        LEA     \1, A1      ; Input pattern string
+        MOVE.W  \2, D0      ; input value
+        MOVE.B  #15, D1     ; Counter tracking the bit position of D0
+        
+vLoop:  CMP.B   #$30, (A1)  ; Check if the template wants a 0
+        BEQ     vCheckFor0
+        CMP.B   #$31, (A1)  ; Check if the template wants a 1
+        BEQ     vCheckFor1
+        BRA     vNext       ; Template has a wildcard, go to next iteration
+        
+vCheckFor0: 
+        BTST    D1, D0      ; Check if contains 0
+        BNE     outputData  ; Missing a 0 -> Not a valid opcode
+        BRA     vNext
+
+vCheckFor1:
+        BTST    D1, D0      ; Check if contains 1
+        BEQ     outputData  ; Missing a 1 -> Not a valid opcode
+
+vNext:  CMP.B   #0, D1      ; Compare bit counter to 0
+        BEQ     vComplete   ; Branch to complete if bit counter reached 0
+        SUB.B   #1, D1      ; Continuing loop -> Decrement bit counter
+        MOVE.B  (A1)+, D3   ; Move A1 to the next pointer (D3 irrelevant)
+        BRA     vLoop       ; Begin loop again
+
+vComplete:  ; Opcode has been verified
+        ENDM
+
+
+
+
+
+
+; +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ; "main" routine
 ; Dylan, Gary
 ; 
@@ -91,7 +150,7 @@ split1:
 
 split10:
         BTST    #$C, D0     ; Check the 4th bit
-        BEQ     decodeDIVUW ; DIVU.W follows 1000+
+        BEQ     decodeDIVU  ; DIVU follows 1000+
         BRA     decodeSUB   ; SUB follows 1001+
 
 split11:
@@ -108,7 +167,7 @@ split110:
         BEQ     decodeAND
         BTST    #$6, D0
         BEQ     decodeAND
-        BRA     decodeMULSW ; All 3 positions (8, 9, 10) were set
+        BRA     decodeMULS  ; All 3 positions (8, 9, 10) were set
 
 split111:
         BTST    #$7, D0     ; The 9th and 10th bit are set for Memory Shifts
@@ -123,9 +182,10 @@ regShift: ; Special split specifically for ASx/LSx Register Shifts
         BTST    #$4, D0     ; Check the 12th bit
         BEQ     decodeASx_R ; ASL_ASR Register Shift follows 1110xxxxxxx01+
         BEQ     decodeLSx_M ; LSL_LSR Register Shift follows 1110xxxxxxx00+
-        
-        
-        
+
+
+
+
 ; ========================================================================
 ; "decodeX" subroutines
 ; Gary, Dylan
@@ -140,6 +200,7 @@ regShift: ; Special split specifically for ASx/LSx Register Shifts
 ; decodeLEA will advance A2 to the next word and decode that.
 ; To finish, decodeLEA will output the decoded instruction with TRAP #15
 ; ========================================================================
+
 ; ------------------------------------------------------------
 ; 1. "decodeNOP" subroutine
 ; AUTHOR
@@ -196,25 +257,25 @@ decodeSUB:
 
 
 ; ------------------------------------------------------------
-; 6a. "decodeMULSW" subroutine
+; 6. "decodeMULS" subroutine
 ; AUTHOR
 ;
-; TODO: DESCRIPTION MULS.W
+; TODO: DESCRIPTION MULS
 ; ------------------------------------------------------------
-decodeMULSW:
+decodeMULS:
         ; Put code here
-        RTS                 ; Return from decodeMULSW subroutine
+        RTS                 ; Return from decodeMULS subroutine
         
         
 ; ------------------------------------------------------------
-; 7a. "decodeDIVUW" subroutine
+; 7. "decodeDIVU" subroutine
 ; AUTHOR
 ;
-; TODO: DESCRIPTION DIVU.W
+; TODO: DESCRIPTION DIVU
 ; ------------------------------------------------------------
-decodeDIVUW:
+decodeDIVU:
         ; Put code here
-        RTS                 ; Return from decodeDIVUW subroutine
+        RTS                 ; Return from decodeDIVU subroutine
 
 
 ; ------------------------------------------------------------
@@ -360,6 +421,8 @@ decodeBRA:
         RTS                 ; Return from decodeBRA subroutine
 
 
+
+
 ; ========================================================================
 ; Generic Helper Functions
 ; 
@@ -369,17 +432,23 @@ decodeBRA:
 ; If input is required, request through D0, D1, etc
 ; Return using D0
 ; ========================================================================
+
 ; ------------------------------------------------------------
-; example helper function
-; NAMEHERE
+; outputData
+; Jonathan
 ;
-; Example of what a helper function might look like
+; When an invalid opcode is found, outputs it as data
 ; ------------------------------------------------------------
-exampleHelp:
+outputData:
         ; Put code here
         RTS                 ; Return from decodeBRA subroutine
 
 
+
+
+
+; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                            ; End of Code
         END    main         ; last line of source
 
 
