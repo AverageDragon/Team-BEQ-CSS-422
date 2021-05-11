@@ -19,7 +19,26 @@
 ; Set of strings to be used with verifyOpcode to check that the patterns match
 ; and the opcode isn't actually data
 ; ------------------------------------------------------------
-pADD:   DC.B    '0100...111......',0
+pNOP:   DC.B    '0100111001110001',0
+pMOVE:  DC.B    '00..............',0
+pMOVEM: DC.B    '01001.001.......',0
+pADD:   DC.B    '1101............',0
+pSUB:   DC.B    '1001............',0
+pMULS:  DC.B    '1100...111......',0
+pDIVU:  DC.B    '1000...011......',0
+pLEA:   DC.B    '0100...111......',0
+pAND:   DC.B    '1100............',0
+pNOT:   DC.B    '01000110........',0
+pLSx_M: DC.B    '1110001.11......',0
+pLSx_R: DC.B    '1110.......01...',0
+pASx_M: DC.B    '1110000.11......',0
+pASx_R: DC.B    '1110.......00...',0
+pBEQ:   DC.B    '01100111........',0
+pBGE:   DC.B    '01101100........',0
+pBLT:   DC.B    '01101101........',0
+pJSR:   DC.B    '0100111010......',0
+pRTS:   DC.B    '0100111001110101',0
+pBRA:   DC.B    '01100000........',0
 
 
 ; ========================================================================
@@ -27,10 +46,10 @@ pADD:   DC.B    '0100...111......',0
 ; ========================================================================
 
 ; ------------------------------------------------------------
-; "verifyOpcode" Macro
+; "verifyOpcode" Helper
 ; Jonathan
 ;
-; 1st argument is a template string (e.g. "0100...111......" for ADD)
+; 1st argument is a template string (e.g. "0100...111......" for LEA)
 ; 2nd argument is a data register to check against the template
 ;
 ; Verifies that the opcode passed through \2 matches the pattern of \1
@@ -41,28 +60,30 @@ verifyOpcode:  MACRO
         MOVE.W  \2, D0      ; input value
         MOVE.B  #15, D1     ; Counter tracking the bit position of D0
         
-vLoop:  CMP.B   #$30, (A1)  ; Check if the template wants a 0
-        BEQ     vCheckFor0
+loop\@: 
+        CMP.B   #$30, (A1)  ; Check if the template wants a 0
+        BEQ     checkFor0\@
         CMP.B   #$31, (A1)  ; Check if the template wants a 1
-        BEQ     vCheckFor1
-        BRA     vNext       ; Template has a wildcard, go to next iteration
+        BEQ     checkFor1\@
+        BRA     next\@      ; Template has a wildcard, go to next iteration
         
-vCheckFor0: 
+checkFor0\@: 
         BTST    D1, D0      ; Check if contains 0
         BNE     outputData  ; Missing a 0 -> Not a valid opcode
-        BRA     vNext
+        BRA     next\@
 
-vCheckFor1:
+checkFor1\@:
         BTST    D1, D0      ; Check if contains 1
         BEQ     outputData  ; Missing a 1 -> Not a valid opcode
 
-vNext:  CMP.B   #0, D1      ; Compare bit counter to 0
-        BEQ     vComplete   ; Branch to complete if bit counter reached 0
+next\@: 
+        CMP.B   #0, D1      ; Compare bit counter to 0
+        BEQ     complete\@  ; Branch to complete if bit counter reached 0
         SUB.B   #1, D1      ; Continuing loop -> Decrement bit counter
         MOVE.B  (A1)+, D3   ; Move A1 to the next pointer (D3 irrelevant)
-        BRA     vLoop       ; Begin loop again
+        BRA     loop\@      ; Begin loop again
 
-vComplete:  ; Opcode has been verified
+complete\@:  ; Opcode has been verified
         ENDM
 
 
@@ -80,7 +101,7 @@ vComplete:  ; Opcode has been verified
 
 
 main:   LEA     $6000, A2      ; Testing identifyOpcode
-        MOVE.W  #$E540, (A2)
+        MOVE.W  #$4BF8, (A2)
         JSR     identifyOpcode
         
         SIMHALT             ; halt simulator
@@ -209,7 +230,8 @@ regShift: ; Special split specifically for ASx/LSx Register Shifts
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeNOP:
-        ; Put code here
+        verifyOpcode    pNOP, (A2)
+        ; put code here
         RTS                 ; Return from decodeNOP subroutine
 
 
@@ -220,7 +242,8 @@ decodeNOP:
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeMOVE:
-        ; Put code here
+        verifyOpcode    pMOVE, (A2)
+        ; put code here
         RTS                 ; Return from decodeMOVE subroutine
 
 
@@ -231,7 +254,8 @@ decodeMOVE:
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeMOVEM:
-        ; Put code here
+        verifyOpcode    pMOVEM, (A2)
+        ; put code here
         RTS                 ; Return from decodeMOVEM subroutine
 
 
@@ -242,7 +266,8 @@ decodeMOVEM:
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeADD:
-        verifyOpcode    pAdd, (A2)
+        verifyOpcode    pADD, (A2)
+        ; put code here
         RTS                 ; Return from decodeADD subroutine
 
 
@@ -253,7 +278,8 @@ decodeADD:
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeSUB:
-        ; Put code here
+        verifyOpcode    pSUB, (A2)
+        ; put code here
         RTS                 ; Return from decodeSUB subroutine
 
 
@@ -264,7 +290,8 @@ decodeSUB:
 ; TODO: DESCRIPTION MULS
 ; ------------------------------------------------------------
 decodeMULS:
-        ; Put code here
+        verifyOpcode    pMULS, (A2)
+        ; put code here
         RTS                 ; Return from decodeMULS subroutine
         
         
@@ -275,7 +302,8 @@ decodeMULS:
 ; TODO: DESCRIPTION DIVU
 ; ------------------------------------------------------------
 decodeDIVU:
-        ; Put code here
+        verifyOpcode    pDIVU, (A2)
+        ; put code here
         RTS                 ; Return from decodeDIVU subroutine
 
 
@@ -286,7 +314,8 @@ decodeDIVU:
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeLEA:
-        ; Put code here
+        verifyOpcode    pLEA, (A2)
+        ; put code here
         RTS                 ; Return from decodeLEA subroutine
 
 
@@ -297,7 +326,8 @@ decodeLEA:
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeAND:
-        ; Put code here
+        verifyOpcode    pAND, (A2)
+        ; put code here
         RTS                 ; Return from decodeAND subroutine
 
 
@@ -308,7 +338,8 @@ decodeAND:
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeNOT:
-        ; Put code here
+        verifyOpcode    pNOT, (A2)
+        ; put code here
         RTS                 ; Return from decodeNOT subroutine
 
 
@@ -319,7 +350,8 @@ decodeNOT:
 ; TODO: DESCRIPTION - LSL or LSR Memory Shift
 ; ------------------------------------------------------------
 decodeLSx_M:
-        ; Put code here
+        verifyOpcode    pLSx_M, (A2)
+        ; put code here
         RTS                 ; Return from decodeLSx_M subroutine
 
 
@@ -330,7 +362,8 @@ decodeLSx_M:
 ; TODO: DESCRIPTION - LSL or LSR Register Shift
 ; ------------------------------------------------------------
 decodeLSx_R:
-        ; Put code here
+        verifyOpcode    pLSx_R, (A2)
+        ; put code here
         RTS                 ; Return from ddecodeLSx_R subroutine
 
 
@@ -341,7 +374,8 @@ decodeLSx_R:
 ; TODO: DESCRIPTION - ASL or ASR Memory Shift
 ; ------------------------------------------------------------
 decodeASx_M:
-        ; Put code here
+        verifyOpcode    pASx_M, (A2)
+        ; put code here
         RTS                 ; Return from decodeASx_M subroutine
 
 
@@ -352,7 +386,8 @@ decodeASx_M:
 ; TODO: DESCRIPTION - ASL or ASR Register Shift
 ; ------------------------------------------------------------
 decodeASx_R:
-        ; Put code here
+        verifyOpcode    pASx_R, (A2)
+        ; put code here
         RTS                 ; Return from decodeASx_R subroutine
 
 
@@ -363,7 +398,8 @@ decodeASx_R:
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeBEQ:
-        ; Put code here
+        verifyOpcode    pBEQ, (A2)
+        ; put code here
         RTS                 ; Return from decodeBEQ subroutine
 
 
@@ -374,7 +410,8 @@ decodeBEQ:
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeBGE:
-        ; Put code here
+        verifyOpcode    pBGE, (A2)
+        ; put code here
         RTS                 ; Return from decodeBGE subroutine
 
 
@@ -385,7 +422,8 @@ decodeBGE:
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeBLT:
-        ; Put code here
+        verifyOpcode    pBLT, (A2)
+        ; put code here
         RTS                 ; Return from decodeBLT subroutine
 
 
@@ -396,7 +434,8 @@ decodeBLT:
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeJSR:
-        ; Put code here
+        verifyOpcode    pJSR, (A2)
+        ; put code here
         RTS                 ; Return from decodeJSR subroutine
 
 
@@ -407,7 +446,8 @@ decodeJSR:
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeRTS:
-        ; Put code here
+        verifyOpcode    pRTS, (A2)
+        ; put code here
         RTS                 ; Return from decodeRTS subroutine
 
 
@@ -418,7 +458,8 @@ decodeRTS:
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeBRA:
-        ; Put code here
+        verifyOpcode    pBRA, (A2)
+        ; put code here
         RTS                 ; Return from decodeBRA subroutine
 
 
@@ -451,6 +492,7 @@ outputData:
 ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                             ; End of Code
         END    main         ; last line of source
+
 
 
 
