@@ -19,6 +19,7 @@
 ; Set of strings to be used with verifyOpcode to check that the patterns match
 ; and the opcode isn't actually data
 ; ------------------------------------------------------------
+pADD:   DC.B    '0100...111......',0
 
 
 ; ========================================================================
@@ -241,7 +242,7 @@ decodeMOVEM:
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeADD:
-        ; Put code here
+        verifyOpcode    pAdd, (A2)
         RTS                 ; Return from decodeADD subroutine
 
 
