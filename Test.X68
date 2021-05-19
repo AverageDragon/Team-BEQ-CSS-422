@@ -216,14 +216,14 @@ NOT:    NOT.B    D0                 ; Dn
         NOT.B   $D649               ; (xxx).W
         NOT.B   $B4986257           ; (xxx).L
 	
-	    NOT.W   D1                  ; Dn
+	NOT.W   D1                  ; Dn
         NOT.W   (A4)                ; (An)  
         NOT.W   (A4)+               ; Dn -> (An)+    
         NOT.W   -(A4)               ; Dn -> -(An)
         NOT.W   $1198               ; (xxx).W
         NOT.W   $60054982           ; (xxx).L
     	    
-    	    NOT.L    D2                 ; Dn
+    	NOT.L    D2                 ; Dn
         NOT.L   (A5)+               ; (An)+        
         NOT.L   (A5)                ; (An)
         NOT.L   -(A5)               ; -(An)
@@ -234,7 +234,7 @@ LSR:    LSR.B   #01, D2             ; Dn
         LSR.B   D2, D3              ; Dn
 	
         LSR.W   #06, D1             ; Dn	
-	    LSR.W   D2, D3              ; Dn
+	LSR.W   D2, D3              ; Dn
         LSR.W   (A4)                ; (An)  
         LSR.W   (A4)+               ; Dn -> (An)+    
         LSR.W   -(A4)               ; Dn -> -(An)
@@ -248,7 +248,7 @@ LSL:    LSL.B   #01, D2             ; Dn
         LSL.B   D2, D3              ; Dn
 	
         LSL.W   #06, D1             ; Dn	
-	    LSL.W   D2, D3              ; Dn
+	LSL.W   D2, D3              ; Dn
         LSL.W   (A4)                ; (An)  
         LSL.W   (A4)+               ; Dn -> (An)+    
         LSL.W   -(A4)               ; Dn -> -(An)
@@ -257,14 +257,65 @@ LSL:    LSL.B   #01, D2             ; Dn
     
         LSL.L   #06, D1             ; Dn    	
         LSL.L   D6, D4              ; Dn
-    	     
+	
+ASL:    ASL.B   #01, D2             ; Dn
+        ASL.B   D2, D3              ; Dn
+	
+        ASL.W   #06, D1             ; Dn	
+	ASL.W   D2, D3              ; Dn
+        ASL.W   (A4)                ; (An)  
+        ASL.W   (A4)+               ; Dn -> (An)+    
+        ASL.W   -(A4)               ; Dn -> -(An)
+        ASL.W   $1198               ; (xxx).W
+        ASL.W   $65783982           ; (xxx).L
+    
+        ASL.L   #06, D1             ; Dn    	
+        ASL.L   D6, D4              ; Dn
+    	  
+ASR:    ASL.B   #01, D2             ; Dn
+        ASL.B   D2, D3              ; Dn
+	
+        ASR.W   #06, D2             ; Dn	
+	ASR.W   D3, D4              ; Dn
+        ASR.W   (A3)                ; (An)  
+        ASR.W   (A3)+               ; Dn -> (An)+    
+        ASR.W   -(A3)               ; Dn -> -(An)
+        ASR.W   $1008               ; (xxx).W
+        ASR.W   $55000982           ; (xxx).L
+    
+        ASR.L   #06, D3             ; Dn    	
+        ASR.L   D4, D2              ; Dn
+        
+MOVEM:  MOVEM.W   D0-D4/A0-A4, (A5)      ; (An)
+        MOVEM.W   D3-D6/A1-A3, -(A4)     ; (An)-
+        MOVEM.W   D4-D5/A2-A6, $1234     ; (xxx).W
+        MOVEM.W   D1-D4/A0-A2, $12345678 ; (xxx).L
+        
+        MOVEM.L   D0-D4/A0-A4, (A5)      ; (An)
+        MOVEM.L   D3-D6/A1-A3, -(A4)     ; (An)-
+        MOVEM.L   D4-D5/A2-A6, $1234     ; (xxx).W
+        MOVEM.L   D1-D4/A0-A2, $12345678 ; (xxx).L
+        
+        MOVEM.W   (A5), D0-D4/A0-A4      ; (An)
+        MOVEM.W   (A4)+, D3-D6/A1-A3     ; +(An)
+        MOVEM.W   $1234, D4-D5/A2-A6     ; (xxx).W
+        MOVEM.W   $12345678, D1-D4/A0-A2 ; (xxx).L
+        
+        MOVEM.L   (A5), D0-D4/A0-A4      ; (An)
+        MOVEM.L   (A4)+, D3-D6/A1-A3     ; +(An)
+        MOVEM.L   $1234, D4-D5/A2-A6     ; (xxx).W
+        MOVEM.L   $12345678, D1-D4/A0-A2 ; (xxx).L
+        
+JMP1:   JMP     BRA1
+BRA1:   BRA     CONT
+
+CONT:   BLT     CONT2
+CONT2:  BGT     CONT3
+CONT3:  BEQ     CONT4
+CONT4:  RTS     
+
     
 	SIMHALT				  ; Halt simulator
-CR:		EQU		$0D		  ; ASCII code for Carriage Return
-LF:		EQU		$0A		  ; ASCII code for Line Feed
 TESTMSG: DC.B   'TEST MESSAGE',CR,LF,0
      
-
-
-
     END    MAIN        ; Last line of source
