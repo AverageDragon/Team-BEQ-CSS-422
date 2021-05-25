@@ -174,48 +174,50 @@ checkForDestDn\@:
         BNE     checkForSrcDn\@
         JSR     next\@
         BTST    D1, D0      ; Check if contains 0
-        BNE     DestDnW\@
-DestDnB\@:        
-        LEA     oBSize, A1     
+        BEQ     DestDnW\@
+DestDnL\@:        
+        LEA     oLSize, A1     
         MOVE.B  #14,D0          
         TRAP    #15
         BRA     complete\@ 
 DestDnW\@: 
+        JSR     next\@
         BTST    D1, D0      ; Check if contains 0
-        BNE     DestDnL\@
+        BEQ     DestDnB\@
         LEA     oWSize, A1     
         MOVE.B  #14,D0          
         TRAP    #15
         BRA     complete\@ 
-DestDnL\@: 
-        LEA     oLSize, A1     
+DestDnB\@: 
+        LEA     oBSize, A1     
         MOVE.B  #14,D0          
         TRAP    #15
         BRA     complete\@ 
 checkForSrcDn\@: 
         JSR     next\@
         BTST    D1, D0      ; Check if contains 0
-        BNE     SrcDnW\@
-SrcDnB\@:        
-        LEA     oBSize, A1     
+        BEQ     SrcDnW\@
+SrcDnL\@:        
+        LEA     oLSize, A1     
         MOVE.B  #14,D0          
         TRAP    #15
         BRA     complete\@ 
-SrcDnW\@: 
+SrcDnW\@:
+        JSR     next\@
         BTST    D1, D0      ; Check if contains 0
-        BNE     SrcDnL\@
+        BEQ     SrcDnB\@
         LEA     oWSize, A1     
         MOVE.B  #14,D0          
         TRAP    #15
         BRA     complete\@ 
-SrcDnL\@: 
-        LEA     oLSize, A1     
+SrcDnB\@: 
+        LEA     oBSize, A1     
         MOVE.B  #14,D0          
         TRAP    #15
         BRA     complete\@ 
 
 next\@:
-        SUB.B   #2, D1      ; Continuing loop -> Decrement bit counter
+        SUB.B   #1, D1      ; Continuing loop -> Decrement bit counter
         RTS                 ; HONESTLY KIND OF NOT NEEDED CAN BE TOSSED INTO BODY
 complete\@:  ; Opcode has been verified
         ENDM
@@ -225,32 +227,12 @@ complete\@:  ; Opcode has been verified
 ; 3 to 8
 ; ------------------------------------------------------------
 decodeAdrMode:  MACRO
-        LEA     \1, A1      ; Input pattern string
-        MOVE.W  \2, D0      ; input value
-        MOVE.B  #15, D1     ; Counter tracking the bit position of D0
+        MOVE.B  #11, D1     ; Counter tracking the bit position of D0
         
-loop\@: 
-        CMP.B   #$30, (A1)  ; Check if the template wants a 0
-        BEQ     checkFor0\@
-        CMP.B   #$31, (A1)  ; Check if the template wants a 1
-        BEQ     checkFor1\@
-        BRA     next\@      ; Template has a wildcard, go to next iteration
-        
-checkFor0\@: 
-        BTST    D1, D0      ; Check if contains 0
-        BNE     outputData  ; Missing a 0 -> Not a valid opcode
-        BRA     next\@
 
-checkFor1\@:
-        BTST    D1, D0      ; Check if contains 1
-        BEQ     outputData  ; Missing a 1 -> Not a valid opcode
-
-next\@: 
-        CMP.B   #0, D1      ; Compare bit counter to 0
-        BEQ     complete\@  ; Branch to complete if bit counter reached 0
-        SUB.B   #1, D1      ; Continuing loop -> Decrement bit counter
-        MOVE.B  (A1)+, D3   ; Move A1 to the next pointer (D3 irrelevant)
-        BRA     loop\@      ; Begin loop again
+next\@:
+        SUB.B   #2, D1      ; Continuing loop -> Decrement bit counter
+        RTS      
 
 complete\@:  ; Opcode has been verified
         ENDM
@@ -266,7 +248,7 @@ complete\@:  ; Opcode has been verified
 
 
 main:   LEA     $6000, A2      ; Testing identifyOpcode
-        MOVE.W  #$5000, (A2)
+        MOVE.W  #$D353, (A2)
         JSR     identifyOpcode
         
         SIMHALT             ; halt simulator
@@ -436,7 +418,7 @@ decodeMOVEM:
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeADD:
-        verifyOpcode    pADD, (A2)
+        ;verifyOpcode    pADD, (A2)
         LEA     oADD, A1     
         MOVE.B  #14,D0          
         TRAP    #15
@@ -670,6 +652,9 @@ outputData:
 ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                             ; End of Code
         END    main         ; last line of source
+
+
+
 
 
 
