@@ -48,7 +48,7 @@ oRB     DC.B    ')',0
 oComma  DC.B    ', ', 0
 oPreDec DC.B    '-', 0
 oPstInc DC.B    '+', 0
-oBlank  DC.B    '', 0
+oBlank  DC.B    ' ', 0
 ; ------------------------------------------------------------
 ; "Pattern" Variables
 ; Jonathan
@@ -483,6 +483,10 @@ main:   LEA     $6000, A2      ; Testing identifyOpcode
         JSR     identifyOpcode
         newLine
         
+        MOVE.W  #$4E91, (A2)
+        JSR     identifyOpcode
+        newLine
+        
         MOVE.W  #$C440, (A2)
         JSR     identifyOpcode
         newLine
@@ -808,7 +812,11 @@ decodeLEA:
         LEA     oLEA, A1     
         MOVE.B  #14,D0          
         TRAP    #15
-        printSize       (A2)
+        
+        LEA     oBlank, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        
         prepareAdrMode  #$1, (A2)
         decodeAdrMode   (A2), D1
         printComma
@@ -948,7 +956,16 @@ decodeBLT:
 ; ------------------------------------------------------------
 decodeJSR:
         verifyOpcode    pJSR, (A2)
-        ; put code here
+        LEA     oJSR, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        
+        LEA     oBlank, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+
+        prepareAdrMode  #$1, (A2)
+        decodeAdrMode   (A2), D1        
         RTS                 ; Return from decodeJSR subroutine
 
 
