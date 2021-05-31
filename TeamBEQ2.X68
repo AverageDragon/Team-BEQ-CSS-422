@@ -6,6 +6,19 @@
 *
 * Class      : CSS 422 A Sp 21 with Jim Hogg
 * Description: A disassembler for 68k machine code.
+*
+* Register Structure: 
+* D0 used for TRAP#15 I/O functions
+* D1 used for secondary MACRO input (namely as a bit counter)
+* D3 used for primary MACRO input (namely stores opcode which is being checked)
+* D4 used as filler destination (e.g. we want to increment adr. but not store value)
+* D6 used for branch conditions (e.g. tracks state of single bit instruction field)
+* D7 used for error validation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+* NOT USED:   D2, D5  
+*
+* A1 used loading strings (for output and validation)
+* A2 used for storing opcode currently being evaluated                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
+* NOT USED:   A0, A3 - A7 
 *-----------------------------------------------------------
 
 ; ========================================================================
@@ -28,11 +41,11 @@ oDIVU:  DC.B    'DIVU',0
 oLEA:   DC.B    'LEA',0
 oAND:   DC.B    'AND',0
 oNOT:   DC.B    'NOT',0
-oLSx_M: DC.B    'LSX',0
-oLSx_R: DC.B    'LS',0
-oASx_M: DC.B    'LS',0
-oASx_R: DC.B    'AS',0
-oBEQ:   DC.B    'AS',0
+oLSL:   DC.B    'LSL',0
+oLSR:   DC.B    'LSR',0
+oASL:   DC.B    'ASL',0
+oASR:   DC.B    'ASR',0
+oBEQ:   DC.B    'BEQ',0
 oBGE:   DC.B    'BGE',0
 oBLT:   DC.B    'BLT',0
 oJSR:   DC.B    'JSR',0
@@ -45,10 +58,11 @@ oDn     DC.B    'D',0
 oAn     DC.B    'A',0
 oLB     DC.B    '(',0
 oRB     DC.B    ')',0
-oComma  DC.B    ', ', 0
-oPreDec DC.B    '-', 0
-oPstInc DC.B    '+', 0
-oBlank  DC.B    ' ', 0
+oComma  DC.B    ', ',0
+oPreDec DC.B    '-',0
+oPstInc DC.B    '+',0
+oHash   DC.B    '#',0
+oBlank  DC.B    ' ',0
 ; ------------------------------------------------------------
 ; "Pattern" Variables
 ; Jonathan
@@ -66,10 +80,12 @@ pDIVU:  DC.B    '1000...011......',0
 pLEA:   DC.B    '0100...111......',0
 pAND:   DC.B    '1100............',0
 pNOT:   DC.B    '01000110........',0
-pLSx_M: DC.B    '1110001.11......',0
-pLSx_R: DC.B    '1110.......01...',0
-pASx_M: DC.B    '1110000.11......',0
-pASx_R: DC.B    '1110.......00...',0
+pLSx_M: DC.B    '1110......001...',0
+pLSx_R: DC.B    '1110......101...',0
+pLSx_S: DC.B    '1110......100...',0
+pASx_M: DC.B    '1110......000...',0
+pASx_R: DC.B    '1110......100...',0
+pASx_S: DC.B    '1110......100...',0
 pBEQ:   DC.B    '01100111........',0
 pBGE:   DC.B    '01101100........',0
 pBLT:   DC.B    '01101101........',0
@@ -120,7 +136,6 @@ next\@:
 
 complete\@:  ; Opcode has been verified
         ENDM
-        
 
 
 ; ------------------------------------------------------------
@@ -199,6 +214,43 @@ checkForL\@:
         TRAP    #15
 complete\@:  ; Size has been printed
         ENDM
+        
+        ; ------------------------------------------------------------
+; "printSize" Helper
+; Gary
+;
+; 1st argument is a data argument to check against three possible sizes
+;
+; Uses no TRAP #15 without CR,LF (no new line) to add on size to opcode.
+; This is done by bit (7 and 6) checking /1 and appending the size to already 
+; printed opcode.  This is only called by opcodes that need size (only MOVE).
+; D4 has value added representing the amount of subsequent words to be scanned.
+; NOTE: POSSIBLY NEED TO INSERT SOME ERROR CHECKING?
+; NOTE: MODULARIZE SO OPMODE CHECKING IS CLEANED UP
+; ------------------------------------------------------------
+printSizeNOT:  MACRO
+        MOVE.W  \1, D3      ; input value      
+checkForB\@: 
+        BTST    #6,  D3      ; Check if contains 0
+        BNE     checkForW\@  ; If not go to word size
+        LEA     oBSize, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        BRA     complete\@      
+checkForW\@: 
+        BTST    #7, D3      ; Check if contains 0
+        BNE     checkForL\@
+        LEA     oWSize, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        BRA     complete\@  
+checkForL\@:
+        LEA     oLSize, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+complete\@:  ; Size has been printed
+        ENDM
+        
         
 ; ------------------------------------------------------------
 ; "printOpMode" Helper
@@ -385,6 +437,18 @@ AdrRegPreDecSrc\@:
 complete\@:  ; Opcode has been verified
         ENDM
 
+printCount:     MACRO
+        MOVE.W  \1, D1      ; bits 9 to 11
+        LSL     #$04, D1
+        LSR     #$08, D1
+        LSR     #$05, D1
+        LEA     oHash, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        MOVE.B  #3,D0          
+        TRAP    #15
+        ENDM
+
 printDnDest:    MACRO 
         MOVE.W  \1, D1      ; bits 9 to 11
         LSL     #$04, D1
@@ -414,7 +478,6 @@ printAnDest:    MACRO
         LSL     #$04, D1
         LSR     #$08, D1
         LSR     #$05, D1
-        MOVE.B  D1, D7
         LEA     oAn, A1     
         MOVE.B  #14,D0          
         TRAP    #15
@@ -427,7 +490,6 @@ printAnSrc:    MACRO
         LSL     #$05, D1
         LSR     #$08, D1
         LSR     #$05, D1
-        MOVE.B  D1, D7
         LEA     oAn, A1     
         MOVE.B  #14,D0          
         TRAP    #15
@@ -483,7 +545,19 @@ main:   LEA     $6000, A2      ; Testing identifyOpcode
         JSR     identifyOpcode
         newLine
         
+        MOVE.W  #$E54B, (A2)
+        JSR     identifyOpcode
+        newLine
+        
+        MOVE.W  #$EE43, (A2)
+        JSR     identifyOpcode
+        newLine
+        
         MOVE.W  #$4E91, (A2)
+        JSR     identifyOpcode
+        newLine
+          
+        MOVE.W  #$469B, (A2)
         JSR     identifyOpcode
         newLine
         
@@ -629,21 +703,21 @@ split110:
         BEQ     decodeAND
         BRA     decodeMULS  ; All 3 positions (8, 9, 10) were set
 
-split111:
-        BTST    #$7, D3     ; The 9th and 10th bit are set for Memory Shifts
-        BEQ     regShift    ; If 9 or 10 are cleared, this is a register shift
-        BTST    #$6, D3
-        BEQ     regShift
-        BTST    #$9, D3     ; Check 7th bit
-        BEQ     decodeASx_M ; ASL_ASR Memory Shift follows 1110000x11+
-        BRA     decodeLSx_M ; LSL_LSR Memory Shift follows 1110001x11+
+split111: 
+        BTST    #$3, D3     ; Check 13th bit
+        BEQ     ariShift ; ASL_ASR Memory Shift follows 1110000x11+
+   
+        BTST    #$5, D3     
+        BNE     logReg      
+        BRA     decodeLSx_M
+      
+logReg: BRA     decodeLSx_R
 
-regShift: ; Special split specifically for ASx/LSx Register Shifts
-        BTST    #$4, D3     ; Check the 12th bit
-        BEQ     decodeASx_R ; ASL_ASR Register Shift follows 1110xxxxxxx01+
-        BEQ     decodeLSx_M ; LSL_LSR Register Shift follows 1110xxxxxxx00+
-
-
+ariShift: ; Special split specifically for Arithmetic Shift
+        BTST    #$5, D3     
+        BNE     ariReg
+        BRA     decodeASx_M    
+ariReg: BRA     decodeASx_R
 
 
 ; ========================================================================
@@ -727,7 +801,6 @@ decodeADD:
         BRA     decodeADDcomp
 decodeAddDestOp:
         prepareAdrMode  #$1,(A2)
-        MOVE.B          D1, D7
         decodeAdrMode   (A2), D1
         printComma
         printDnDest     (A2)
@@ -755,7 +828,6 @@ decodeSUB:
         BRA     decodeSUBcomp
 decodeSubDestOp:
         prepareAdrMode  #$1,(A2)
-        MOVE.B          D1, D7
         decodeAdrMode   (A2), D1
         printComma
         printDnDest     (A2)
@@ -844,7 +916,6 @@ decodeAND:
         BRA     decodeANDcomp
 decodeAndDestOp:
         prepareAdrMode  #$1,(A2)
-        MOVE.B          D1, D7
         decodeAdrMode   (A2), D1
         printComma
         printDnDest     (A2)
@@ -860,7 +931,12 @@ decodeANDcomp:
 ; ------------------------------------------------------------
 decodeNOT:
         verifyOpcode    pNOT, (A2)
-        ; put code here
+        LEA     oNOT, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        printSizeNOT       (A2)
+        prepareAdrMode  #$1, (A2)
+        decodeAdrMode   (A2), D1
         RTS                 ; Return from decodeNOT subroutine
 
 
@@ -872,7 +948,20 @@ decodeNOT:
 ; ------------------------------------------------------------
 decodeLSx_M:
         verifyOpcode    pLSx_M, (A2)
-        ; put code here
+        BTST    #$08, D3     ; Check the 8th bit
+        BEQ     LSR_M
+LSL_M:  LEA     oLSL, A1
+        MOVE.B  #14,D0          
+        TRAP    #15 
+        BRA     reg_M        
+  
+LSR_M:  LEA     oLSR, A1
+        MOVE.B  #14,D0          
+        TRAP    #15      
+reg_M:  printSizeNOT       (A2) 
+        printCount       (A2)
+        printComma
+        printDnSrc     (A2)        
         RTS                 ; Return from decodeLSx_M subroutine
 
 
@@ -884,10 +973,32 @@ decodeLSx_M:
 ; ------------------------------------------------------------
 decodeLSx_R:
         verifyOpcode    pLSx_R, (A2)
-        ; put code here
+        BTST    #$08, D3     ; Check the 8th bit
+        BEQ     LSR_R
+LSL_R:  LEA     oLSL, A1
+        MOVE.B  #14,D0          
+        TRAP    #15 
+        BRA     reg_R       
+  
+LSR_R:  LEA     oLSR, A1
+        MOVE.B  #14,D0          
+        TRAP    #15      
+reg_R:  printSizeNOT       (A2)
+        printDnDest    (A2)
+        printComma
+        printDnSrc     (A2)
         RTS                 ; Return from ddecodeLSx_R subroutine
 
-
+; ------------------------------------------------------------
+; 11c. "decodeLSx_S" subroutine
+; AUTHOR
+;
+; TODO: DESCRIPTION - LSL or LSR Register Shift
+; ------------------------------------------------------------
+decodeLSx_S:
+        verifyOpcode    pLSx_S, (A2)
+        RTS                 ; Return from ddecodeLSx_S subroutine
+        
 ; ------------------------------------------------------------
 ; 12a. "decodeASx_M" subroutine
 ; AUTHOR
@@ -896,7 +1007,20 @@ decodeLSx_R:
 ; ------------------------------------------------------------
 decodeASx_M:
         verifyOpcode    pASx_M, (A2)
-        ; put code here
+        BTST    #$08, D3     ; Check the 8th bit
+        BEQ     ASR_M
+ASL_M:  LEA     oASL, A1
+        MOVE.B  #14,D0          
+        TRAP    #15 
+        BRA     Areg_M        
+  
+ASR_M:  LEA     oASR, A1
+        MOVE.B  #14,D0          
+        TRAP    #15      
+Areg_M: printSizeNOT       (A2) 
+        printCount       (A2)
+        printComma
+        printDnSrc     (A2)          
         RTS                 ; Return from decodeASx_M subroutine
 
 
@@ -908,8 +1032,31 @@ decodeASx_M:
 ; ------------------------------------------------------------
 decodeASx_R:
         verifyOpcode    pASx_R, (A2)
-        ; put code here
+        BTST    #$08, D3     ; Check the 8th bit
+        BEQ     ASR_R
+ASL_R:  LEA     oASL, A1
+        MOVE.B  #14,D0          
+        TRAP    #15 
+        BRA     Areg_R       
+  
+ASR_R:  LEA     oASR, A1
+        MOVE.B  #14,D0          
+        TRAP    #15      
+Areg_R: printSizeNOT       (A2)
+        printDnDest    (A2)
+        printComma
+        printDnSrc     (A2)
         RTS                 ; Return from decodeASx_R subroutine
+        
+        ; ------------------------------------------------------------
+; 12c. "decodeASx_S" subroutine
+; AUTHOR
+;
+; TODO: DESCRIPTION - ASL or ASR Register Shift
+; ------------------------------------------------------------
+decodeASx_S:
+        verifyOpcode    pASx_S, (A2)
+        RTS                 ; Return from decodeASx_S subroutine
 
 
 ; ------------------------------------------------------------
@@ -1014,8 +1161,8 @@ decodeBRA:
 ; When an invalid opcode is found, outputs it as data
 ; ------------------------------------------------------------
 outputData:
-        MOVEA    A2, A1     
-        MOVE.B  #$d, (A2) 
+        MOVE.L  D3, A1     
+        MOVE.B  #$d, (A1) 
         MOVE.B  #14,D0          
         TRAP    #15
         RTS                 ; Return from decodeBRA subroutine
@@ -1027,6 +1174,7 @@ outputData:
 ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                             ; End of Code
         END    main         ; last line of source
+
 
 
 
