@@ -97,7 +97,22 @@ pBRA:   DC.B    '01100000........',0
 ; ========================================================================
 ; Macros
 ; ========================================================================
-
+; ------------------------------------------------------------
+; "convertHtoA" Helper
+; Jonathan
+;
+; 1st argument is a data register containing a single digit of a hex number.
+;
+; Converts the argument from a hex digit to an ascii character
+; ------------------------------------------------------------
+convertHtoA:    MACRO
+        CMPI.B  #9, \1      ; If greater than 9, this is an alphanumeric char
+        BGT     alpha\@
+        ADDI.B  #$30, \1    ; Add 30 to convert digit to ascii char
+        BRA     done\@
+alpha\@: ADDI.B #$37, \1    ; AAdd 37 to convert A-F to ascii char
+done\@: NOP
+        ENDM
 ; ------------------------------------------------------------
 ; "verifyOpcode" Helper
 ; Jonathan
