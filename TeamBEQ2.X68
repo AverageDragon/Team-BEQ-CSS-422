@@ -14,7 +14,7 @@
 * D4 used as filler destination (e.g. we want to increment adr. but not store value)
 * D6 used for branch conditions (e.g. tracks state of single bit instruction field)
 * D7 used for error validation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
-* NOT USED:   D2, D5  
+* NOT USED:   D1, D5  
 *
 * A1 used loading strings (for output and validation)
 * A2 used for storing opcode currently being evaluated                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
@@ -97,46 +97,6 @@ pBRA:   DC.B    '01100000........',0
 ; ========================================================================
 ; Macros
 ; ========================================================================
-; ------------------------------------------------------------
-; "decodeRegNum" Helper
-; Gary
-;
-; 1st argument is given binary reg. number
-;
-; Given the three binary digits indicating opcode num, macro converts
-; to hex and returns it as hex in D4 register for printing.
-; ------------------------------------------------------------
-decodeRegNum:  MACRO
-        LEA     \1, A1      ; Input pattern string
-        MOVE.W  \2, D3      ; input value
-        MOVE.B  #15, D1     ; Counter tracking the bit position of D3
-        
-loop\@: 
-        CMP.B   #$30, (A1)  ; Check if the template wants a 0
-        BEQ     checkFor0\@
-        CMP.B   #$31, (A1)  ; Check if the template wants a 1
-        BEQ     checkFor1\@
-        BRA     next\@      ; Template has a wildcard, go to next iteration
-        
-checkFor0\@: 
-        BTST    D1, D3      ; Check if contains 0
-        BNE     outputData  ; Missing a 0 -> Not a valid opcode
-        BRA     next\@
-
-checkFor1\@:
-        BTST    D1, D3      ; Check if contains 1
-        BEQ     outputData  ; Missing a 1 -> Not a valid opcode
-
-next\@: 
-        CMP.B   #0, D1      ; Compare bit counter to 0
-        BEQ     complete\@  ; Branch to complete if bit counter reached 0
-        SUB.B   #1, D1      ; Continuing loop -> Decrement bit counter
-        MOVE.B  (A1)+, D3   ; Move A1 to the next pointer (D3 irrelevant)
-        BRA     loop\@      ; Begin loop again
-
-complete\@:  ; Opcode has been verified
-        ENDM
-
 
 ; ------------------------------------------------------------
 ; "verifyOpcode" Helper
@@ -183,70 +143,66 @@ complete\@:  ; Opcode has been verified
 ; "printSize" Helper
 ; Gary
 ;
-; 1st argument is a data argument to check against three possible sizes
+; 1st argument is the data register with opcode whose size is being decoded
 ;
-; Uses no TRAP #15 without CR,LF (no new line) to add on size to opcode.
-; This is done by bit (13 and 12) checking /1 and appending the size to already 
-; printed opcode.  This is only called by opcodes that need size (only MOVE).
-; D4 has value added representing the amount of subsequent words to be scanned.
-; NOTE: POSSIBLY NEED TO INSERT SOME ERROR CHECKING?
-; NOTE: MODULARIZE SO OPMODE CHECKING IS CLEANED UP
+; Used in opcodes whose size bits are #13 and #12 (e.g. MOVE). It does so
+; by sequentally checking both bits. Bit #13 differentiates byte and word size.
+; If bit goes to word, bit #12 is checked to differntiate word and long word.
+; Once matched, size is printed and appended to already printed opcode (TRAP #15 no CR,LF).
 ; ------------------------------------------------------------
 printSize:  MACRO
         MOVE.W  \1, D3      ; input value      
 checkForB\@: 
         BTST    #13, D3      ; Check if contains 0
         BNE     checkForW\@  ; If not go to word size
-        LEA     oBSize, A1     
+        LEA     oBSize, A1   ; If bit #13 is 0, size is byte and macro ends. 
         MOVE.B  #14,D0          
         TRAP    #15
         BRA     complete\@      
 checkForW\@: 
-        BTST    #12, D3      ; Check if contains 0
-        BEQ     checkForL\@
-        LEA     oWSize, A1     
+        BTST    #12, D3      ; Check if contains 1
+        BEQ     checkForL\@  ; If not, size cannot be word
+        LEA     oWSize, A1   ; If bit #12 is 1, size is word and macro ends.  
         MOVE.B  #14,D0          
         TRAP    #15
         BRA     complete\@  
 checkForL\@:
-        LEA     oLSize, A1     
+        LEA     oLSize, A1   ; If bit #12 is 0, size is longword and macro ends.  
         MOVE.B  #14,D0          
         TRAP    #15
 complete\@:  ; Size has been printed
         ENDM
         
         ; ------------------------------------------------------------
-; "printSize" Helper
+; "printSizeLow" Helper
 ; Gary
 ;
-; 1st argument is a data argument to check against three possible sizes
+; 1st argument is the data register with opcode whose size is being decoded
 ;
-; Uses no TRAP #15 without CR,LF (no new line) to add on size to opcode.
-; This is done by bit (7 and 6) checking /1 and appending the size to already 
-; printed opcode.  This is only called by opcodes that need size (only MOVE).
-; D4 has value added representing the amount of subsequent words to be scanned.
-; NOTE: POSSIBLY NEED TO INSERT SOME ERROR CHECKING?
-; NOTE: MODULARIZE SO OPMODE CHECKING IS CLEANED UP
+; Used in opcodes whose size bits are #6 and #7 (e.g. ADD). It does so
+; by sequentally checking both bits. Bit #6 differentiates byte and word size.
+; If bit goes to word, bit #7 is checked to differntiate word and long word.
+; Once matched, size is printed and appended to already printed opcode, macro exits.
 ; ------------------------------------------------------------
-printSizeNOT:  MACRO
+printSizeLow:  MACRO
         MOVE.W  \1, D3      ; input value      
 checkForB\@: 
         BTST    #6,  D3      ; Check if contains 0
         BNE     checkForW\@  ; If not go to word size
         LEA     oBSize, A1     
-        MOVE.B  #14,D0          
+        MOVE.B  #14,D0       ; Print and end macro  
         TRAP    #15
         BRA     complete\@      
 checkForW\@: 
         BTST    #7, D3      ; Check if contains 0
-        BNE     checkForL\@
+        BNE     checkForL\@ ; If not go to longword size
         LEA     oWSize, A1     
-        MOVE.B  #14,D0          
+        MOVE.B  #14,D0       ; Print and end macro       
         TRAP    #15
         BRA     complete\@  
 checkForL\@:
-        LEA     oLSize, A1     
-        MOVE.B  #14,D0          
+        LEA     oLSize, A1   ; If both bits are #1, size is longword and macro ends.  
+        MOVE.B  #14,D0       ; Print and end macro  
         TRAP    #15
 complete\@:  ; Size has been printed
         ENDM
@@ -256,25 +212,23 @@ complete\@:  ; Size has been printed
 ; "printOpMode" Helper
 ; Gary
 ;
-; 1st argument is a data argument to check against six possible modes
+; 1st argument holds opcode whose opmode is being decoded
 ;
-; Uses no TRAP #15 without CR,LF (no new line) to add on opMode to opcode.
-; This is done by bit (6 to 8) checking /1 and appending the size to already 
-; printed opcode.  This is only called by opcodes that need opMode.
-; D4 has value added representing the amount of subsequent words to be scanned.
-; NOTE: FIX COMMENT BLOCKS
-; NOTE: POSSIBLY NEED TO INSERT SOME ERROR CHECKING?
+; With the opcode in D3, D1 is designated as the bit tracker. Split
+; into two sorting mechanisms: first, the macro determines whether
+; the register is a source or a destination. Then, the macro determines
+; the size and appends it to printed opcode in a similar manner to printSize.
 ; ------------------------------------------------------------
 printOpMode:  MACRO
-        MOVE.W  \1, D3      ; input value
-        MOVE.B  #8, D2     ; Counter tracking the bit position of D3      
+        MOVE.W  \1, D3      
+        MOVE.B  #8, D1    
         CLR     D6
 checkForDestDn\@: 
-        BTST    D2, D3      ; Check if contains 0
+        BTST    D1, D3      
         BNE     checkForSrcDn\@
         JSR     next\@
         MOVE.B  #$1, D6
-        BTST    D2, D3      ; Check if contains 0
+        BTST    D1, D3      
         BEQ     DestDnW\@
 DestDnL\@:        
         LEA     oLSize, A1     
@@ -283,7 +237,7 @@ DestDnL\@:
         BRA     complete\@ 
 DestDnW\@: 
         JSR     next\@
-        BTST    D2, D3      ; Check if contains 0
+        BTST    D1, D3      
         BEQ     DestDnB\@
         LEA     oWSize, A1     
         MOVE.B  #14,D0          
@@ -296,7 +250,7 @@ DestDnB\@:
         BRA     complete\@ 
 checkForSrcDn\@: 
         JSR     next\@
-        BTST    D2, D3      ; Check if contains 0
+        BTST    D1, D3      
         BEQ     SrcDnW\@
 SrcDnL\@:        
         LEA     oLSize, A1     
@@ -306,7 +260,7 @@ SrcDnL\@:
         BRA     complete\@ 
 SrcDnW\@:
         JSR     next\@
-        BTST    D2, D3      ; Check if contains 0
+        BTST    D1, D3     
         BEQ     SrcDnB\@
         LEA     oWSize, A1     
         MOVE.B  #14,D0          
@@ -321,8 +275,8 @@ SrcDnB\@:
         BRA     complete\@ 
 
 next\@:
-        SUB.B   #1, D2      ; Continuing loop -> Decrement bit counter
-        RTS                 ; HONESTLY KIND OF NOT NEEDED CAN BE TOSSED INTO BODY
+        SUB.B   #1, D1      ; Continuing loop -> Decrement bit counter
+        RTS                
 
 complete\@:  ; Opcode has been verified
         ENDM
@@ -351,10 +305,11 @@ complete\@:  ; Opcode has been verified
         ENDM        
         
 ; ------------------------------------------------------------
-; "prepareAdrMode" Helper
+; "decodeAdrMode" Helper
 ; Gary
 ; 
-; Based on the bits left from the prepare subroutine, go to correct mode.
+; Executes after prepare macro on D1 which contains only adressing mode
+; bits. 
 ; ------------------------------------------------------------
 decodeAdrMode:  MACRO
         MOVE.W  \1, D3      ; input value
@@ -370,7 +325,7 @@ decodeAdrMode:  MACRO
         BEQ     AdrRegPreDec\@  
         
 dataRegDirect\@: 
-        CMP.B   #$01, D5
+        CMP.B   #$01, D3
         BEQ     dataRegDirectSrc\@   
 dataRegDirectDest\@: 
         printDnDest D3 
@@ -380,7 +335,7 @@ dataRegDirectSrc\@:
         BRA     complete\@   
         
 AdrRegDirect\@: 
-        CMP.B   #$01, D5
+        CMP.B   #$01, D3
         BEQ     AdrRegDirectSrc\@   
 AdrRegDirectDest\@:
         printAnDest D3
@@ -390,7 +345,7 @@ AdrRegDirectSrc\@:
         BRA     complete\@   
        
 AdrRegInDirect\@:   
-        CMP.B   #$01, D5
+        CMP.B   #$01, D3
         BEQ     AdrRegInDirectSrc\@   
 AdrRegInDirectDest\@:
         printLB
@@ -404,7 +359,7 @@ AdrRegInDirectSrc\@:
         BRA     complete\@   
         
 AdrRegPostInc\@:   
-        CMP.B   #$01, D5
+        CMP.B   #$01, D3
         BEQ     AdrRegPostIncSrc\@   
 AdrRegPostIncDest\@: 
         printLB
@@ -420,7 +375,7 @@ AdrRegPostIncSrc\@:
         BRA     complete\@  
         
 AdrRegPreDec\@: 
-        CMP.B   #$01, D5
+        CMP.B   #$01, D3
         BEQ     AdrRegPreDecSrc\@   
 AdrRegPreDecDest\@:
         printPD  
@@ -573,7 +528,7 @@ main:   LEA     $6000, A2      ; Testing identifyOpcode
         JSR     identifyOpcode
         newLine
         
-        MOVE.W  #$8AD2, (A2)
+        MOVE.W  #$8AD1, (A2)
         JSR     identifyOpcode
         newLine 
         
@@ -934,7 +889,7 @@ decodeNOT:
         LEA     oNOT, A1     
         MOVE.B  #14,D0          
         TRAP    #15
-        printSizeNOT       (A2)
+        printSizeLow       (A2)
         prepareAdrMode  #$1, (A2)
         decodeAdrMode   (A2), D1
         RTS                 ; Return from decodeNOT subroutine
@@ -958,7 +913,7 @@ LSL_M:  LEA     oLSL, A1
 LSR_M:  LEA     oLSR, A1
         MOVE.B  #14,D0          
         TRAP    #15      
-reg_M:  printSizeNOT       (A2) 
+reg_M:  printSizeLow       (A2) 
         printCount       (A2)
         printComma
         printDnSrc     (A2)        
@@ -983,7 +938,7 @@ LSL_R:  LEA     oLSL, A1
 LSR_R:  LEA     oLSR, A1
         MOVE.B  #14,D0          
         TRAP    #15      
-reg_R:  printSizeNOT       (A2)
+reg_R:  printSizeLow       (A2)
         printDnDest    (A2)
         printComma
         printDnSrc     (A2)
@@ -1017,7 +972,7 @@ ASL_M:  LEA     oASL, A1
 ASR_M:  LEA     oASR, A1
         MOVE.B  #14,D0          
         TRAP    #15      
-Areg_M: printSizeNOT       (A2) 
+Areg_M: printSizeLow       (A2) 
         printCount       (A2)
         printComma
         printDnSrc     (A2)          
@@ -1042,7 +997,7 @@ ASL_R:  LEA     oASL, A1
 ASR_R:  LEA     oASR, A1
         MOVE.B  #14,D0          
         TRAP    #15      
-Areg_R: printSizeNOT       (A2)
+Areg_R: printSizeLow       (A2)
         printDnDest    (A2)
         printComma
         printDnSrc     (A2)
@@ -1158,14 +1113,38 @@ decodeBRA:
 ; outputData
 ; Jonathan
 ;
-; When an invalid opcode is found, outputs it as data
+; Converts the hex in A2 to ASCII and outputs it, then increments A2.
 ; ------------------------------------------------------------
 outputData:
-        MOVE.L  D3, A1     
-        MOVE.B  #$d, (A1) 
-        MOVE.B  #14,D0          
-        TRAP    #15
-        RTS                 ; Return from decodeBRA subroutine
+        MOVE.B  #6, D0      ; Prepare TRAP 15 for outputting a character in D1
+        MOVE.W  (A2), D1    ; Move A2 into D1
+        LSR.W   #8, D1      ; Get the first hex digit of D1
+        LSR.W   #4, D1      
+        ConvertHtoA D1      ; Convert D1 to a character
+        TRAP    #15         ; Execute output
+        
+        MOVE.W  (A2), D1    ; Move A2 into D1
+        LSL.W   #4, D1      ; Remove the first 4 bits (1 digit) of D1
+        LSR.W   #8, D1      ; Get the first hex digit of D1
+        LSR.W   #4, D1      
+        ConvertHtoA D1      ; Convert D1 to a character
+        TRAP    #15         ; Execute output
+        
+        MOVE.W  (A2), D1    ; Move A2 into D1
+        LSL.W   #8, D1      ; Remove the first 8 bits (2 digits) of D1
+        LSR.W   #8, D1      ; Get the first hex digit of D1
+        LSR.W   #4, D1      
+        ConvertHtoA D1      ; Convert D1 to a character
+        TRAP    #15         ; Execute output
+        
+        MOVE.W  (A2), D1    ; Move A2 into D1
+        LSL.W   #8, D1      ; Remove the first 8 bits (2 digits) of D1
+        LSL.W   #4, D1      ; Remove the first 4 bits (1 more digit) of D1
+        LSR.W   #8, D1      ; Get the first hex digit of D1
+        LSR.W   #4, D1      
+        ConvertHtoA D1      ; Convert D1 to a character
+        TRAP    #15         ; Execute output
+        RTS
 
 
 
@@ -1174,6 +1153,7 @@ outputData:
 ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                             ; End of Code
         END    main         ; last line of source
+
 
 
 
