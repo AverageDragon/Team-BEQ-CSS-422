@@ -487,7 +487,6 @@ AdrRegPostIncSrc\@:
         printRB
         printPI
         BRA     complete\@  
-        
 AdrRegPreDec\@: 
         CMP.B   #$01, D6
         BEQ     AdrRegPreDecSrc\@   
@@ -507,6 +506,7 @@ AdrRegPreDecSrc\@:
 AdrAbsolute\@:
         CMP.B   #$01, D6
         BNE     AdrAbsoluteDst\@ 
+        
         MOVE.W  D3, D5
         BTST    #2, D3
         BNE     AdrImmediate\@
@@ -515,9 +515,9 @@ AdrAbsolute\@:
         BRA     AdrAbsoluteW\@
 AdrAbsoluteDst\@:
         MOVE.W  D3, D5
-        BTST    #11, D3
+        BTST    #$B, D3
         BNE     AdrImmediate\@
-        BTST    #9, D3
+        BTST    #$09, D3
         BNE     AdrAbsoluteL\@
         BRA     AdrAbsoluteW\@
 AdrImmediate\@:
@@ -541,7 +541,6 @@ AdrImmediateL\@:
         BRA     complete\@ 
 AdrAbsoluteW\@:     
         MOVE.W  (A2)+, D3
-        printSign
         printSign
         adrOut
         MOVE.W  D5, D3
@@ -721,15 +720,15 @@ identifyOpcode:
 
 split0: 
         BTST    #$E, D3     ; Check the 2nd bit
-        BEQ     split000    ; MOVE follows 00+
+        BEQ     split000    ; MOVE follows 00+        
         BRA     split01
+        
 split000:        
         BTST    #$D, D3     ; Check the 3rd bit
         BNE     decodeMOVE
         BTST    #$C, D3     ; Check the 3rd bit
-        BEQ     outputData
         BNE     decodeMOVE
-        
+        BRA     outputData
 split01:
         BTST    #$D, D3     ; Check the 3rd bit
         BEQ     split0100   ; Code is 010, but all subcodes are 0100
@@ -797,20 +796,18 @@ split111:
         BEQ     ariShift ; ASL_ASR Memory Shift follows 1110000x11+
    
         BTST    #$5, D3     
-        BNE     logReg      
+        BNE     logReg     
         BRA     decodeLSx_M
-      
-logReg: BRA     decodeLSx_R
+logReg: BTST    #12, D3         
+        BEQ     decodeLSx_R
+        BRA     outputData
 
 ariShift: ; Special split specifically for Arithmetic Shift
         BTST    #$5, D3     
         BNE     ariReg
         BRA     decodeASx_M    
 ariReg: BRA     decodeASx_R
-notFound:
-        BRA     OutputData
-
-
+            
 
 ; ========================================================================
 ; "decodeX" subroutines
@@ -1029,7 +1026,6 @@ decodeNOT:
         prepareAdrMode  #$1, (A2)
         decodeAdrMode   (A2), D1
         RTS                 ; Return from decodeNOT subroutine
-
 
 ; ------------------------------------------------------------
 ; 11a. "decodeLSx_M" subroutine
@@ -1292,6 +1288,7 @@ outputData:
 ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                             ; End of Code
         END    main         ; last line of source
+
 
 
 
