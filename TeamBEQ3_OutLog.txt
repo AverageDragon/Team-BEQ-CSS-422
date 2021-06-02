@@ -1,0 +1,1874 @@
+EASy68K output log file: 6/2/2021 10:46:08 AM
+
+Enter the starting address (4 digit hex number):
+6000 
+Enter the ending address (4 digit hex number):
+7000 
+ 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W D5, D3 
+RTS 
+LEA $$017E, A0 
+MOVE.W (A2), D3 
+MOVE.B #$000F, D1 
+=0C11 
+=0030 
+ 
+=000E 
+=0C11 
+=0031 
+ 
+=0010 
+ 
+=0012 
+=0303 
+=6600 
+=0B16 
+ 
+=0008 
+=0303 
+ 
+=0B0C 
+=B23C 
+=0000 
+ 
+=0008 
+=5301 
+MOVE.B (A1)+, D4 
+ 
+=0803 
+=0008 
+ 
+=0010 
+LEA $$008D, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=000C 
+LEA $$0091, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.W (A2), D3 
+=0803 
+=0006 
+=6600 
+=0010 
+LEA $$00B5, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=0022 
+=0803 
+=0007 
+=6600 
+=0010 
+LEA $$00B9, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=000C 
+LEA $$00BD, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00D0, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+LEA $$00C9, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+=4281 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSL.W #5, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00C1, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+RTS 
+LEA $$018F, A0 
+MOVE.W (A2), D3 
+MOVE.B #$000F, D1 
+=0C11 
+=0030 
+ 
+=000E 
+=0C11 
+=0031 
+ 
+=0010 
+ 
+=0012 
+=0303 
+=6600 
+=0A42 
+ 
+=0008 
+=0303 
+ 
+=0A38 
+=B23C 
+=0000 
+ 
+=0008 
+=5301 
+MOVE.B (A1)+, D4 
+ 
+=0803 
+=0008 
+ 
+=0010 
+LEA $$008D, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=000C 
+LEA $$0091, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.W (A2), D3 
+=0803 
+=0006 
+=6600 
+=0010 
+LEA $$00B5, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=0022 
+=0803 
+=0007 
+=6600 
+=0010 
+LEA $$00B9, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=000C 
+LEA $$00BD, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00C1, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+LEA $$00C9, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+=4281 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSL.W #5, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00C1, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+RTS 
+LEA $$01A0, A0 
+MOVE.W (A2), D3 
+MOVE.B #$000F, D1 
+=0C11 
+=0030 
+ 
+=000E 
+=0C11 
+=0031 
+ 
+=0010 
+ 
+=0012 
+=0303 
+=6600 
+=096E 
+ 
+=0008 
+=0303 
+ 
+=0964 
+=B23C 
+=0000 
+ 
+=0008 
+=5301 
+MOVE.B (A1)+, D4 
+ 
+RTS 
+LEA $$01B1, A0 
+MOVE.W (A2), D3 
+MOVE.B #$000F, D1 
+=0C11 
+=0030 
+ 
+=000E 
+=0C11 
+=0031 
+ 
+=0010 
+ 
+=0012 
+=0303 
+=6600 
+=0930 
+ 
+=0008 
+=0303 
+ 
+=0926 
+=B23C 
+=0000 
+ 
+=0008 
+=5301 
+MOVE.B (A1)+, D4 
+ 
+=0803 
+=0008 
+ 
+=0010 
+LEA $$0095, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=000C 
+LEA $$0099, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.W (A2), D3 
+=0803 
+=0006 
+=6600 
+=0010 
+LEA $$00B5, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=0022 
+=0803 
+=0007 
+=6600 
+=0010 
+LEA $$00B9, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=000C 
+LEA $$00BD, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00D0, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+LEA $$00C9, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+=4281 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSL.W #5, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00C1, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+RTS 
+LEA $$01C2, A0 
+MOVE.W (A2), D3 
+MOVE.B #$000F, D1 
+=0C11 
+=0030 
+ 
+=000E 
+=0C11 
+=0031 
+ 
+=0010 
+ 
+=0012 
+=0303 
+=6600 
+=085C 
+ 
+=0008 
+=0303 
+ 
+=0852 
+=B23C 
+=0000 
+ 
+=0008 
+=5301 
+MOVE.B (A1)+, D4 
+ 
+=0803 
+=0008 
+ 
+=0010 
+LEA $$0095, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=000C 
+LEA $$0099, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.W (A2), D3 
+=0803 
+=0006 
+=6600 
+=0010 
+LEA $$00B5, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=0022 
+=0803 
+=0007 
+=6600 
+=0010 
+LEA $$00B9, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=000C 
+LEA $$00BD, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00C1, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+LEA $$00C9, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+=4281 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSL.W #5, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00C1, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+RTS 
+LEA $$01D3, A0 
+MOVE.W (A2), D3 
+MOVE.B #$000F, D1 
+=0C11 
+=0030 
+ 
+=000E 
+=0C11 
+=0031 
+ 
+=0010 
+ 
+=0012 
+=0303 
+=6600 
+=0788 
+ 
+=0008 
+=0303 
+ 
+=077E 
+=B23C 
+=0000 
+ 
+=0008 
+=5301 
+MOVE.B (A1)+, D4 
+ 
+RTS 
+LEA $$01E4, A0 
+MOVE.W (A2), D3 
+MOVE.B #$000F, D1 
+=0C11 
+=0030 
+ 
+=000E 
+=0C11 
+=0031 
+ 
+=0010 
+ 
+=0012 
+=0303 
+=6600 
+=074A 
+ 
+=0008 
+=0303 
+ 
+=0740 
+=B23C 
+=0000 
+ 
+=0008 
+=5301 
+MOVE.B (A1)+, D4 
+ 
+RTS 
+LEA $$01F5, A0 
+MOVE.W (A2), D3 
+MOVE.B #$000F, D1 
+=0C11 
+=0030 
+ 
+=000E 
+=0C11 
+=0031 
+ 
+=0010 
+ 
+=0012 
+=0303 
+=6600 
+=070C 
+ 
+=0008 
+=0303 
+ 
+=0702 
+=B23C 
+=0000 
+ 
+=0008 
+=5301 
+MOVE.B (A1)+, D4 
+ 
+RTS 
+LEA $$0206, A1 
+MOVE.W (A2), D3 
+MOVE.B #$000F, D1 
+=0C11 
+=0030 
+ 
+=000E 
+=0C11 
+=0031 
+ 
+=0010 
+ 
+=0012 
+=0303 
+=6600 
+=06CE 
+ 
+=0008 
+=0303 
+ 
+=06C4 
+=B23C 
+=0000 
+ 
+=0008 
+=5301 
+MOVE.B (A1)+, D4 
+ 
+RTS 
+LEA $$0217, A1 
+MOVE.W (A2), D3 
+MOVE.B #$000F, D1 
+=0C11 
+=0030 
+ 
+=000E 
+=0C11 
+=0031 
+ 
+=0010 
+ 
+=0012 
+=0303 
+=6600 
+=0690 
+ 
+=0008 
+=0303 
+ 
+=0686 
+=B23C 
+=0000 
+ 
+=0008 
+=5301 
+MOVE.B (A1)+, D4 
+ 
+LEA $$00A9, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+LEA $$00D2, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.W #$0001, D6 
+MOVE.W (A2), D1 
+=BC3C 
+=0001 
+ 
+=000C 
+LSL.W #7, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+ 
+=000A 
+LSL.W #0, D1 
+LSL.W #2, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+MOVE.W (A2), D3 
+MOVE.W D1, D1 
+=B23C 
+=0001 
+ 
+=0066 
+=B23C 
+=0002 
+ 
+=00A0 
+=B23C 
+=0003 
+ 
+=0102 
+=B23C 
+=0004 
+ 
+=0178 
+=B23C 
+=0007 
+ 
+=01EE 
+=BC3C 
+=0001 
+ 
+=001E 
+MOVE.W D3, D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00C1, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+ 
+=056C 
+=4281 
+MOVE.W D3, D1 
+LSL.W #0, D1 
+LSL.W #5, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00C1, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+ 
+=054C 
+=BC3C 
+=0001 
+ 
+=001E 
+MOVE.W D3, D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00C3, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+ 
+=0528 
+MOVE.W D3, D1 
+LSL.W #0, D1 
+LSL.W #5, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00C3, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+ 
+=050A 
+=BC3C 
+=0001 
+ 
+=0032 
+LEA $$00C5, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.W D3, D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00C3, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+LEA $$00C7, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=04D2 
+LEA $$00C5, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.W D3, D1 
+LSL.W #0, D1 
+LSL.W #5, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00C3, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+LEA $$00C7, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=04A0 
+=BC3C 
+=0001 
+ 
+=003C 
+LEA $$00C5, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.W D3, D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00C3, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+LEA $$00C7, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+LEA $$00CE, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=045E 
+LEA $$00C5, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.W D3, D1 
+LSL.W #0, D1 
+LSL.W #5, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00C3, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+LEA $$00C7, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+LEA $$00CE, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=0422 
+=BC3C 
+=0001 
+ 
+=003C 
+LEA $$00CC, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+LEA $$00C5, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.W D3, D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00C3, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+LEA $$00C7, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=03E0 
+LEA $$00CC, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+LEA $$00C5, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.W D3, D1 
+LSL.W #0, D1 
+LSL.W #5, D1 
+LSR.W #0, D1 
+LSR.W #5, D1 
+LEA $$00C3, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+MOVE.B #$0003, D0 
+=4E4F 
+LEA $$00C7, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+ 
+=03A4 
+=BC3C 
+=0001 
+=6600 
+=0018 
+MOVE.W D3, D5 
+=0803 
+=0002 
+=6600 
+=0024 
+=0803 
+=0000 
+=6600 
+=027A 
+ 
+=01DA 
+MOVE.W D3, D5 
+=0803 
+=000B 
+=6600 
+=000E 
+=0803 
+=0009 
+=6600 
+=0264 
+ 
+=01C4 
+=BE3C 
+=0001 
+ 
+=009E 
+MOVE.W (A2)+, D3 
+MOVE.B #$0006, D0 
+MOVE.W #$0023, D1 
+=4E4F 
+MOVE.B #$0006, D0 
+MOVE.W #$0024, D1 
+=4E4F 
+MOVE.W (A2), D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W D5, D3 
+ 
+=02CC 
+MOVE.W (A2)+, D3 
+MOVE.B #$0006, D0 
+MOVE.W #$0023, D1 
+=4E4F 
+MOVE.B #$0006, D0 
+MOVE.W #$0024, D1 
+=4E4F 
+MOVE.W (A2), D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2)+, D3 
+MOVE.W (A2), D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W D5, D3 
+ 
+=01AE 
+MOVE.W (A2)+, D3 
+MOVE.B #$0006, D0 
+MOVE.W #$0024, D1 
+=4E4F 
+MOVE.B #$0006, D0 
+MOVE.W #$0024, D1 
+=4E4F 
+MOVE.W (A2), D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W D5, D3 
+ 
+=0112 
+MOVE.W (A2)+, D3 
+MOVE.B #$0006, D0 
+MOVE.W #$0024, D1 
+=4E4F 
+MOVE.W (A2), D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2)+, D3 
+MOVE.W (A2), D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W D5, D3 
+RTS 
+LEA $$0228, A1 
+MOVE.W (A2), D3 
+MOVE.B #$000F, D1 
+=0C11 
+=0030 
+ 
+=000E 
+=0C11 
+=0031 
+ 
+=0010 
+ 
+=0012 
+=0303 
+=6600 
+=0064 
+ 
+=0008 
+=0303 
+ 
+=005A 
+=B23C 
+=0000 
+ 
+=0008 
+=5301 
+MOVE.B (A1)+, D4 
+ 
+LEA $$00AD, A0 
+MOVE.B #$000E, D0 
+=4E4F 
+RTS 
+LEA $$0239, A1 
+MOVE.W (A2), D3 
+MOVE.B #$000F, D1 
+=0C11 
+=0030 
+ 
+=000E 
+=0C11 
+=0031 
+ 
+=0010 
+ 
+=0012 
+=0303 
+=6600 
+=001C 
+ 
+=0008 
+=0303 
+ 
+=0012 
+=B23C 
+=0000 
+ 
+=0008 
+=5301 
+MOVE.B (A1)+, D4 
+ 
+RTS 
+MOVE.B #$0006, D0 
+MOVE.W #$003D, D1 
+=4E4F 
+MOVE.W (A2), D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+MOVE.W (A2), D1 
+LSL.W #0, D1 
+LSL.W #4, D1 
+LSR.W #0, D1 
+LSR.W #4, D1 
+=0C01 
+=0009 
+=6E00 
+=000A 
+=0601 
+=0030 
+ 
+=0006 
+=0601 
+=0037 
+NOP 
+=4E4F 
+RTS 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 

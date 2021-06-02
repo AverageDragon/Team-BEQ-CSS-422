@@ -12,9 +12,9 @@
 * D1 used for secondary MACRO input (namely as a bit counter)
 * D3 used for primary MACRO input (namely stores opcode which is being checked)
 * D4 used as filler destination (e.g. we want to increment adr. but not store value)
+* D5 used as temporary storage of opcode (when scanning next word for adr mode)
 * D6 used for branch conditions (e.g. tracks state of single bit instruction field)
-* D7 used for error validation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
-* NOT USED:   D1, D5  
+* D7 used for size marker and error validation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
 *
 * A1 used loading strings (for output and validation)
 * A2 used for storing opcode currently being evaluated                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
@@ -173,7 +173,41 @@ convertHtoA:    MACRO
 alpha\@: ADDI.B #$37, \1    ; AAdd 37 to convert A-F to ascii char
 done\@: NOP
         ENDM
+; ------------------------------------------------------------
+; adrOut
+; Gary
+;
+; Converts the hex in A2 to ASCII and outputs it, then increments A2.
+; ------------------------------------------------------------
+adrOut:         MACRO
+        MOVE.W  (A2), D1    ; Move A2 into D1
+        LSR.W   #8, D1      ; Get the first hex digit of D1
+        LSR.W   #4, D1      
+        ConvertHtoA D1      ; Convert D1 to a character
+        TRAP    #15         ; Execute output
         
+        MOVE.W  (A2), D1    ; Move A2 into D1
+        LSL.W   #4, D1      ; Remove the first 4 bits (1 digit) of D1
+        LSR.W   #8, D1      ; Get the first hex digit of D1
+        LSR.W   #4, D1      
+        ConvertHtoA D1      ; Convert D1 to a character
+        TRAP    #15         ; Execute output
+        
+        MOVE.W  (A2), D1    ; Move A2 into D1
+        LSL.W   #8, D1      ; Remove the first 8 bits (2 digits) of D1
+        LSR.W   #8, D1      ; Get the first hex digit of D1
+        LSR.W   #4, D1      
+        ConvertHtoA D1      ; Convert D1 to a character
+        TRAP    #15         ; Execute output
+        
+        MOVE.W  (A2), D1    ; Move A2 into D1
+        LSL.W   #8, D1      ; Remove the first 8 bits (2 digits) of D1
+        LSL.W   #4, D1      ; Remove the first 4 bits (1 more digit) of D1
+        LSR.W   #8, D1      ; Get the first hex digit of D1
+        LSR.W   #4, D1      
+        ConvertHtoA D1      ; Convert D1 to a character
+        TRAP    #15         ; Execute output       
+        ENDM 
 ; ------------------------------------------------------------
 ; "verifyOpcode" Helper
 ; Jonathan
@@ -227,7 +261,8 @@ complete\@:  ; Opcode has been verified
 ; Once matched, size is printed and appended to already printed opcode (TRAP #15 no CR,LF).
 ; ------------------------------------------------------------
 printSize:  MACRO
-        MOVE.W  \1, D3      ; input value      
+        MOVE.W  \1, D3      ; input value
+        CLR     D7      
 checkForB\@: 
         BTST    #13, D3      ; Check if contains 0
         BNE     checkForW\@  ; If not go to word size
@@ -243,6 +278,7 @@ checkForW\@:
         TRAP    #15
         BRA     complete\@  
 checkForL\@:
+        MOVE.B  #$1, D7
         LEA     oLSize, A1   ; If bit #12 is 0, size is longword and macro ends.  
         MOVE.B  #14,D0          
         TRAP    #15
@@ -363,9 +399,9 @@ complete\@:  ; Opcode has been verified
 ; Shifts bits of a given opcode so that D1 contains only ADRmode.
 ; ------------------------------------------------------------
 prepareAdrMode: MACRO
-        MOVE.W  \1, D5      ; input value
+        MOVE.W  \1, D6      ; input value
         MOVE.W  \2, D1
-        CMP.B   #$01, D5
+        CMP.B   #$01, D6
         BEQ     AdrSource\@    
 AdrDest\@:
         LSL     #$07, D1   ; If 0 is passed, bits left are 6 to 8
@@ -388,8 +424,8 @@ complete\@:  ; Opcode has been verified
 ; bits. 
 ; ------------------------------------------------------------
 decodeAdrMode:  MACRO
-        MOVE.W  \1, D3      ; input value
-        MOVE.W  \2, D1      ; input value
+        MOVE.W  \1, D3      ; holds full opcode
+        MOVE.W  \2, D1      ; holds just opmode
 
         CMP.B   #$01, D1
         BEQ     AdrRegDirect\@    
@@ -398,10 +434,12 @@ decodeAdrMode:  MACRO
         CMP.B   #$03, D1
         BEQ     AdrRegPostInc\@  
         CMP.B   #$04, D1
-        BEQ     AdrRegPreDec\@  
+        BEQ     AdrRegPreDec\@
+        CMP.B   #$07, D1
+        BEQ     AdrAbsolute\@    
         
 dataRegDirect\@: 
-        CMP.B   #$01, D3
+        CMP.B   #$01, D6
         BEQ     dataRegDirectSrc\@   
 dataRegDirectDest\@: 
         printDnDest D3 
@@ -411,7 +449,7 @@ dataRegDirectSrc\@:
         BRA     complete\@   
         
 AdrRegDirect\@: 
-        CMP.B   #$01, D3
+        CMP.B   #$01, D6
         BEQ     AdrRegDirectSrc\@   
 AdrRegDirectDest\@:
         printAnDest D3
@@ -421,7 +459,7 @@ AdrRegDirectSrc\@:
         BRA     complete\@   
        
 AdrRegInDirect\@:   
-        CMP.B   #$01, D3
+        CMP.B   #$01, D6
         BEQ     AdrRegInDirectSrc\@   
 AdrRegInDirectDest\@:
         printLB
@@ -435,7 +473,7 @@ AdrRegInDirectSrc\@:
         BRA     complete\@   
         
 AdrRegPostInc\@:   
-        CMP.B   #$01, D3
+        CMP.B   #$01, D6
         BEQ     AdrRegPostIncSrc\@   
 AdrRegPostIncDest\@: 
         printLB
@@ -451,7 +489,7 @@ AdrRegPostIncSrc\@:
         BRA     complete\@  
         
 AdrRegPreDec\@: 
-        CMP.B   #$01, D3
+        CMP.B   #$01, D6
         BEQ     AdrRegPreDecSrc\@   
 AdrRegPreDecDest\@:
         printPD  
@@ -464,7 +502,58 @@ AdrRegPreDecSrc\@:
         printLB
         printAnSrc D3  
         printRB
-        BRA     complete\@     
+        BRA     complete\@
+       
+AdrAbsolute\@:
+        CMP.B   #$01, D6
+        BNE     AdrAbsoluteDst\@ 
+        MOVE.W  D3, D5
+        BTST    #2, D3
+        BNE     AdrImmediate\@
+        BTST    #0, D3
+        BNE     AdrAbsoluteL\@
+        BRA     AdrAbsoluteW\@
+AdrAbsoluteDst\@:
+        MOVE.W  D3, D5
+        BTST    #11, D3
+        BNE     AdrImmediate\@
+        BTST    #9, D3
+        BNE     AdrAbsoluteL\@
+        BRA     AdrAbsoluteW\@
+AdrImmediate\@:
+        CMP.B   #1, D7
+        BEQ     AdrImmediateL\@
+AdrImmediateW\@:
+        MOVE.W  (A2)+, D3
+        printHash
+        printSign
+        adrOut
+        MOVE.W  D5, D3
+        BRA     complete\@
+AdrImmediateL\@:
+        MOVE.W  (A2)+, D3
+        printHash
+        printSign
+        adrOut 
+        MOVE.W  (A2)+, D3
+        adrOut
+        MOVE.W  D5, D3
+        BRA     complete\@ 
+AdrAbsoluteW\@:     
+        MOVE.W  (A2)+, D3
+        printSign
+        printSign
+        adrOut
+        MOVE.W  D5, D3
+        BRA     complete\@  
+AdrAbsoluteL\@:  
+        MOVE.W  (A2)+, D3
+        printSign
+        adrOut 
+        MOVE.W  (A2)+, D3
+        adrOut
+        MOVE.W  D5, D3
+
 complete\@:  ; Opcode has been verified
         ENDM
 
@@ -553,6 +642,22 @@ printRB:    MACRO
         MOVE.B  #14,D0          
         TRAP    #15
         ENDM
+printSign:  MACRO
+        MOVE.B  #6, D0      ; Prepare TRAP 15 for outputting a character in D1
+        MOVE.W  #36, D1     ; An = sign
+        TRAP    #15         ; Output = sign
+        ENDM
+printHash:  MACRO
+        MOVE.B  #6, D0      ; Prepare TRAP 15 for outputting a character in D1
+        MOVE.W  #35, D1     ; An = sign
+        TRAP    #15         ; Output = sign
+        ENDM
+        
+space:      MACRO
+        LEA     oBlank, A1
+        MOVE.B  #14,D0          
+        TRAP    #15
+        ENDM
 newLine:    MACRO
         LEA     oBlank, A1
         MOVE.B  #13,D0          
@@ -588,7 +693,7 @@ goLoop: MOVE.L  #0, D1
         CMP.L   D2, D1    ; Check if the loop is over
         BLE     endSim      ; A2 is past the loop start if this is reached
         JSR     identifyOpcode  ; Decode what is at A2
-        MOVE.W  (A2)+, D1   ; Increment A2 (D1 isn't relevant)
+        MOVE.W  (A2)+, D4   ; Increment A2 (D1 isn't relevant)
         newline
         BRA     goLoop
         
@@ -616,8 +721,14 @@ identifyOpcode:
 
 split0: 
         BTST    #$E, D3     ; Check the 2nd bit
-        BEQ     decodeMOVE  ; MOVE follows 00+
+        BEQ     split000    ; MOVE follows 00+
         BRA     split01
+split000:        
+        BTST    #$D, D3     ; Check the 3rd bit
+        BNE     decodeMOVE
+        BTST    #$C, D3     ; Check the 3rd bit
+        BEQ     outputData
+        BNE     decodeMOVE
         
 split01:
         BTST    #$D, D3     ; Check the 3rd bit
@@ -696,6 +807,9 @@ ariShift: ; Special split specifically for Arithmetic Shift
         BNE     ariReg
         BRA     decodeASx_M    
 ariReg: BRA     decodeASx_R
+notFound:
+        BRA     OutputData
+
 
 
 ; ========================================================================
@@ -742,8 +856,8 @@ decodeMOVE:
         prepareAdrMode  #$1, (A2)
         decodeAdrMode   (A2), D1
         printComma
-        prepareAdrMode  #$0, (A2)
-        decodeAdrMode   (A2), D1
+        prepareAdrMode  #$0,  D3
+        decodeAdrMode   D3, D1
         RTS                 ; Return from decodeMOVE subroutine
 
 
@@ -774,14 +888,14 @@ decodeADD:
         CMP.B   #$1, D6             ; If 1, <ea> into Dn otherwise Dn into <ea>
         BEQ     decodeAddDestOp
         printComma
-        prepareAdrMode  #$1, (A2)
+        prepareAdrMode  #$0, (A2)
         decodeAdrMode   (A2), D1
         BRA     decodeADDcomp
 decodeAddDestOp:
         prepareAdrMode  #$1,(A2)
         decodeAdrMode   (A2), D1
         printComma
-        printDnDest     (A2)
+        printDnDest     D3
 decodeADDcomp:
         RTS                ; Return from decodeADD subroutine
 
@@ -801,14 +915,14 @@ decodeSUB:
         CMP.B   #$1, D6             ; If 1, <ea> into Dn otherwise Dn into <ea>
         BEQ     decodeSubDestOp
         printComma
-        prepareAdrMode  #$1, (A2)
+        prepareAdrMode  #$0, (A2)
         decodeAdrMode   (A2), D1
         BRA     decodeSUBcomp
 decodeSubDestOp:
         prepareAdrMode  #$1,(A2)
         decodeAdrMode   (A2), D1
         printComma
-        printDnDest     (A2)
+        printDnDest     D3
 decodeSUBcomp:
         RTS                ; Return from decodeSUBcomp subroutine
 
@@ -828,9 +942,8 @@ decodeMULS:
         prepareAdrMode  #$1, (A2)
         decodeAdrMode   (A2), D1
         printComma
-        printDnDest     (A2)
+        printDnDest     D3
         RTS                 ; Return from decodeMULS subroutine
-        
         
 ; ------------------------------------------------------------
 ; 7. "decodeDIVU" subroutine
@@ -847,7 +960,7 @@ decodeDIVU:
         prepareAdrMode  #$1, (A2)
         decodeAdrMode   (A2), D1
         printComma
-        printDnDest     (A2)
+        printDnDest     D3
         RTS                 ; Return from decodeDIVU subroutine
 
 
@@ -1179,6 +1292,7 @@ outputData:
 ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                             ; End of Code
         END    main         ; last line of source
+
 
 
 
