@@ -4,7 +4,7 @@
 * Date       :
 * Description:Test for Disassembler
 *-----------------------------------------------------------
-    ORG    $3000
+    ORG    $6000
 MAIN:                  
 NOP:    NOP
 RTS:    RTS
@@ -268,3 +268,8 @@ TESTMSG: DC.B   'TEST MESSAGE',CR,LF,0
 
 
     END    MAIN        ; Last line of source
+
+*~Font name~Courier New~
+*~Font size~10~
+*~Tab type~1~
+*~Tab size~4~
