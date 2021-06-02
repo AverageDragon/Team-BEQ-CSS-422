@@ -1,7 +1,6 @@
-EASy68K output log file: 6/2/2021 12:31:36 PM
+EASy68K output log file: 6/2/2021 12:45:54 PM
 
 Enter the starting address (4 digit hex number):
-06Enter the starting address (4 digit hex number):
 0100 
 Enter the ending address (4 digit hex number):
 0600 
@@ -456,20 +455,20 @@ ASR.B D5, D4
  
  
 =0CB6 
- 
- 
+BRABRABRABRABRA 
+BRABRABRABRABRA 
 LSR.B #5, D6 
- 
+BRABRABRABRABRA 
 =0CAC 
  
-LSR.B D6, D7 
+=FC2F 
  
-LSR.B D2, D7 
+=F43F 
  
-LSR.B D6, D7 
+=FC2F 
 MOVE.B D4, D1 
  
-LSR.B D6, D7 
+=FC2F 
 MOVE.B D4, D1 
 NOT.W $4C93 
 =0010 
@@ -482,39 +481,39 @@ MOVE.B D4, D1
 =0010 
 MOVE.B D4, D1 
 NOT.W $FFFF 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
-LSL.L D7, D7 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 
+=FFFF 

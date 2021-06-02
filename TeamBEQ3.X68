@@ -1225,7 +1225,10 @@ decodeRTS:
 ; ------------------------------------------------------------
 decodeBRA:
         verifyOpcode    pBRA, (A2)
-        ; put code here
+        LEA     oBRA, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        adrOut
         RTS                 ; Return from decodeBRA subroutine
 
 
