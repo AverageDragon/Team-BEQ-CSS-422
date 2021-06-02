@@ -13,6 +13,36 @@
 ; ========================================================================
 
 ; ------------------------------------------------------------
+; "Output" Variables
+; Gary
+; 
+; Set of strings to be used with I/O of given instruction
+; ------------------------------------------------------------
+oNOP:   DC.B    'NOP',0
+oMOVE:  DC.B    'MOVE',0
+oMOVEM: DC.B    'MOVEM',0
+oADD:   DC.B    'ADD',0
+oSUB:   DC.B    'SUB',0
+oMULS:  DC.B    'MULS',0
+oDIVU:  DC.B    'DIVU',0
+oLEA:   DC.B    'LEA',0
+oAND:   DC.B    'AND',0
+oNOT:   DC.B    'NOT',0
+oLSx_M: DC.B    'LSX',0
+oLSx_R: DC.B    'LS',0
+oASx_M: DC.B    'LS',0
+oASx_R: DC.B    'AS',0
+oBEQ:   DC.B    'AS',0
+oBGE:   DC.B    'BGE',0
+oBLT:   DC.B    'BLT',0
+oJSR:   DC.B    'JSR',0
+oRTS:   DC.B    'RTS',0
+oBRA:   DC.B    'BRA',0
+oBSize  DC.B    '.B ',0
+oWSize  DC.B    '.W ',0
+oLSize  DC.B    '.L ',0
+
+; ------------------------------------------------------------
 ; "Pattern" Variables
 ; Jonathan
 ; 
@@ -85,10 +115,127 @@ next\@:
 
 complete\@:  ; Opcode has been verified
         ENDM
+        
+; ------------------------------------------------------------
+; "printSize" Helper
+; Gary
+;
+; 1st argument is a data argument to check against three possible sizes
+;
+; Uses no TRAP #15 without CR,LF (no new line) to add on size to opcode.
+; This is done by bit (13 and 12) checking /1 and appending the size to already 
+; printed opcode.  This is only called by opcodes that need size (only MOVE).
+; D4 has value added representing the amount of subsequent words to be scanned.
+; NOTE: POSSIBLY NEED TO INSERT SOME ERROR CHECKING?
+; NOTE: MODULARIZE SO OPMODE CHECKING IS CLEANED UP
+; ------------------------------------------------------------
+printSize:  MACRO
+        MOVE.W  \1, D0      ; input value      
+checkForB\@: 
+        BTST    #13, D0      ; Check if contains 0
+        BNE     checkForW\@  ; If not go to word size
+        LEA     oBSize, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        BRA     complete\@      
+checkForW\@: 
+        BTST    #12, D0      ; Check if contains 0
+        BEQ     checkForL\@
+        LEA     oWSize, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        BRA     complete\@  
+checkForL\@:
+        LEA     oLSize, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+complete\@:  ; Size has been printed
+        ENDM
+        
+; ------------------------------------------------------------
+; "printOpMode" Helper
+; Gary
+;
+; 1st argument is a data argument to check against six possible modes
+;
+; Uses no TRAP #15 without CR,LF (no new line) to add on opMode to opcode.
+; This is done by bit (6 to 8) checking /1 and appending the size to already 
+; printed opcode.  This is only called by opcodes that need opMode.
+; D4 has value added representing the amount of subsequent words to be scanned.
+; NOTE: FIX COMMENT BLOCKS
+; NOTE: POSSIBLY NEED TO INSERT SOME ERROR CHECKING?
+; ------------------------------------------------------------
+printOpMode:  MACRO
+        MOVE.W  \1, D0      ; input value
+        MOVE.B  #8, D1     ; Counter tracking the bit position of D0      
+        
+checkForDestDn\@: 
+        BTST    D1, D0      ; Check if contains 0
+        BNE     checkForSrcDn\@
+        JSR     next\@
+        BTST    D1, D0      ; Check if contains 0
+        BEQ     DestDnW\@
+DestDnL\@:        
+        LEA     oLSize, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        BRA     complete\@ 
+DestDnW\@: 
+        JSR     next\@
+        BTST    D1, D0      ; Check if contains 0
+        BEQ     DestDnB\@
+        LEA     oWSize, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        BRA     complete\@ 
+DestDnB\@: 
+        LEA     oBSize, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        BRA     complete\@ 
+checkForSrcDn\@: 
+        JSR     next\@
+        BTST    D1, D0      ; Check if contains 0
+        BEQ     SrcDnW\@
+SrcDnL\@:        
+        LEA     oLSize, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        BRA     complete\@ 
+SrcDnW\@:
+        JSR     next\@
+        BTST    D1, D0      ; Check if contains 0
+        BEQ     SrcDnB\@
+        LEA     oWSize, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        BRA     complete\@ 
+SrcDnB\@: 
+        LEA     oBSize, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        BRA     complete\@ 
 
+next\@:
+        SUB.B   #1, D1      ; Continuing loop -> Decrement bit counter
+        RTS                 ; HONESTLY KIND OF NOT NEEDED CAN BE TOSSED INTO BODY
+complete\@:  ; Opcode has been verified
+        ENDM
+; ------------------------------------------------------------
+; "decodeAdrMode" Helper
+; Gary
+; 3 to 8
+; ------------------------------------------------------------
+decodeAdrMode:  MACRO
+        MOVE.B  #11, D1     ; Counter tracking the bit position of D0
+        
 
+next\@:
+        SUB.B   #2, D1      ; Continuing loop -> Decrement bit counter
+        RTS      
 
-
+complete\@:  ; Opcode has been verified
+        ENDM
 
 
 ; +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -101,7 +248,7 @@ complete\@:  ; Opcode has been verified
 
 
 main:   LEA     $6000, A2      ; Testing identifyOpcode
-        MOVE.W  #$4BF8, (A2)
+        MOVE.W  #$D353, (A2)
         JSR     identifyOpcode
         
         SIMHALT             ; halt simulator
@@ -231,7 +378,9 @@ regShift: ; Special split specifically for ASx/LSx Register Shifts
 ; ------------------------------------------------------------
 decodeNOP:
         verifyOpcode    pNOP, (A2)
-        ; put code here
+        LEA     oNOP, A1     ; Loads byteVAR
+        MOVE.B  #14,D0          
+        TRAP    #15
         RTS                 ; Return from decodeNOP subroutine
 
 
@@ -243,7 +392,10 @@ decodeNOP:
 ; ------------------------------------------------------------
 decodeMOVE:
         verifyOpcode    pMOVE, (A2)
-        ; put code here
+        LEA     oMOVE, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        printSize       (A2)
         RTS                 ; Return from decodeMOVE subroutine
 
 
@@ -266,8 +418,11 @@ decodeMOVEM:
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeADD:
-        verifyOpcode    pADD, (A2)
-        ; put code here
+        ;verifyOpcode    pADD, (A2)
+        LEA     oADD, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        printOpMode     (A2)
         RTS                 ; Return from decodeADD subroutine
 
 
@@ -447,7 +602,9 @@ decodeJSR:
 ; ------------------------------------------------------------
 decodeRTS:
         verifyOpcode    pRTS, (A2)
-        ; put code here
+        LEA     oRTS, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
         RTS                 ; Return from decodeRTS subroutine
 
 
@@ -482,7 +639,10 @@ decodeBRA:
 ; When an invalid opcode is found, outputs it as data
 ; ------------------------------------------------------------
 outputData:
-        ; Put code here
+        MOVEA    A2, A1     
+        MOVE.B  #$d, (A2) 
+        MOVE.B  #14,D0          
+        TRAP    #15
         RTS                 ; Return from decodeBRA subroutine
 
 
@@ -492,6 +652,11 @@ outputData:
 ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                             ; End of Code
         END    main         ; last line of source
+
+
+
+
+
 
 
 

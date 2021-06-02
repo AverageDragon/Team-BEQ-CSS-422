@@ -1,6 +1,6 @@
 00001000 Starting Address
 Assembler used: EASy68K Editor/Assembler v5.16.01
-Created On: 5/10/2021 6:27:31 PM
+Created On: 5/25/2021 3:25:17 PM
 
 00000000                             1  *-----------------------------------------------------------
 00000000                             2  * Title      : 68000 Disassembler (DASM)
@@ -17,485 +17,645 @@ Created On: 5/10/2021 6:27:31 PM
 00000000                            13  ; ========================================================================
 00000000                            14  
 00000000                            15  ; ------------------------------------------------------------
-00000000                            16  ; "Pattern" Variables
-00000000                            17  ; Jonathan
+00000000                            16  ; "Output" Variables
+00000000                            17  ; Gary
 00000000                            18  ; 
-00000000                            19  ; Set of strings to be used with verifyOpcode to check that the patterns match
-00000000                            20  ; and the opcode isn't actually data
-00000000                            21  ; ------------------------------------------------------------
-00000000= 30 31 30 30 31 31 ...     22  pNOP:   DC.B    '0100111001110001',0
-00000011= 30 30 2E 2E 2E 2E ...     23  pMOVE:  DC.B    '00..............',0
-00000022= 30 31 30 30 31 2E ...     24  pMOVEM: DC.B    '01001.001.......',0
-00000033= 31 31 30 31 2E 2E ...     25  pADD:   DC.B    '1101............',0
-00000044= 31 30 30 31 2E 2E ...     26  pSUB:   DC.B    '1001............',0
-00000055= 31 31 30 30 2E 2E ...     27  pMULS:  DC.B    '1100...111......',0
-00000066= 31 30 30 30 2E 2E ...     28  pDIVU:  DC.B    '1000...011......',0
-00000077= 30 31 30 30 2E 2E ...     29  pLEA:   DC.B    '0100...111......',0
-00000088= 31 31 30 30 2E 2E ...     30  pAND:   DC.B    '1100............',0
-00000099= 30 31 30 30 30 31 ...     31  pNOT:   DC.B    '01000110........',0
-000000AA= 31 31 31 30 30 30 ...     32  pLSx_M: DC.B    '1110001.11......',0
-000000BB= 31 31 31 30 2E 2E ...     33  pLSx_R: DC.B    '1110.......01...',0
-000000CC= 31 31 31 30 30 30 ...     34  pASx_M: DC.B    '1110000.11......',0
-000000DD= 31 31 31 30 2E 2E ...     35  pASx_R: DC.B    '1110.......00...',0
-000000EE= 30 31 31 30 30 31 ...     36  pBEQ:   DC.B    '01100111........',0
-000000FF= 30 31 31 30 31 31 ...     37  pBGE:   DC.B    '01101100........',0
-00000110= 30 31 31 30 31 31 ...     38  pBLT:   DC.B    '01101101........',0
-00000121= 30 31 30 30 31 31 ...     39  pJSR:   DC.B    '0100111010......',0
-00000132= 30 31 30 30 31 31 ...     40  pRTS:   DC.B    '0100111001110101',0
-00000143= 30 31 31 30 30 30 ...     41  pBRA:   DC.B    '01100000........',0
-00000154                            42  
-00000154                            43  
-00000154                            44  ; ========================================================================
-00000154                            45  ; Macros
-00000154                            46  ; ========================================================================
-00000154                            47  
-00000154                            48  ; ------------------------------------------------------------
-00000154                            49  ; "verifyOpcode" Helper
-00000154                            50  ; Jonathan
-00000154                            51  ;
-00000154                            52  ; 1st argument is a template string (e.g. "0100...111......" for LEA)
-00000154                            53  ; 2nd argument is a data register to check against the template
-00000154                            54  ;
-00000154                            55  ; Verifies that the opcode passed through \2 matches the pattern of \1
-00000154                            56  ; If they do not match, branches to outputData
-00000154                            57  ; ------------------------------------------------------------
-00000154                            58  verifyOpcode:  MACRO
-00000154                            59          LEA     \1, A1      ; Input pattern string
-00000154                            60          MOVE.W  \2, D0      ; input value
-00000154                            61          MOVE.B  #15, D1     ; Counter tracking the bit position of D0
-00000154                            62          
-00000154                            63  loop\@: 
-00000154                            64          CMP.B   #$30, (A1)  ; Check if the template wants a 0
-00000154                            65          BEQ     checkFor0\@
-00000154                            66          CMP.B   #$31, (A1)  ; Check if the template wants a 1
-00000154                            67          BEQ     checkFor1\@
-00000154                            68          BRA     next\@      ; Template has a wildcard, go to next iteration
-00000154                            69          
-00000154                            70  checkFor0\@: 
-00000154                            71          BTST    D1, D0      ; Check if contains 0
-00000154                            72          BNE     outputData  ; Missing a 0 -> Not a valid opcode
-00000154                            73          BRA     next\@
-00000154                            74  
-00000154                            75  checkFor1\@:
-00000154                            76          BTST    D1, D0      ; Check if contains 1
-00000154                            77          BEQ     outputData  ; Missing a 1 -> Not a valid opcode
-00000154                            78  
-00000154                            79  next\@: 
-00000154                            80          CMP.B   #0, D1      ; Compare bit counter to 0
-00000154                            81          BEQ     complete\@  ; Branch to complete if bit counter reached 0
-00000154                            82          SUB.B   #1, D1      ; Continuing loop -> Decrement bit counter
-00000154                            83          MOVE.B  (A1)+, D3   ; Move A1 to the next pointer (D3 irrelevant)
-00000154                            84          BRA     loop\@      ; Begin loop again
-00000154                            85  
-00000154                            86  complete\@:  ; Opcode has been verified
-00000154                            87          ENDM
-00000154                            88  
-00000154                            89  
-00000154                            90  
-00000154                            91  
-00000154                            92  
-00000154                            93  
-00000154                            94  ; +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-00000154                            95  ; "main" routine
-00000154                            96  ; Dylan, Gary
-00000154                            97  ; 
-00000154                            98  ; TODO: DESCRIPTION OF MAIN ROUTINE FUNCTIONALITY
-00000154                            99  ; ========================================================================
-00001000                           100          ORG     $1000
-00001000                           101  
-00001000                           102  
-00001000  45F8 6000                103  main:   LEA     $6000, A2      ; Testing identifyOpcode
-00001004  34BC 4BF8                104          MOVE.W  #$4BF8, (A2)
-00001008  4EB9 00001012            105          JSR     identifyOpcode
-0000100E                           106          
-0000100E  FFFF FFFF                107          SIMHALT             ; halt simulator
-00001012                           108          
-00001012                           109          
-00001012                           110  ; ========================================================================
-00001012                           111  ; "identifyOpcode" subroutine
-00001012                           112  ; Jonathan
-00001012                           113  ; 
-00001012                           114  ; Reads the Word at A2 and determines which opcode it represents.
-00001012                           115  ; When the opcode is identified, the appropriate "decodeX" subroutine
-00001012                           116  ; is invoked.
-00001012                           117  ;
-00001012                           118  ; Uses a generated Trie structure to determine where to split on which bits
-00001012                           119  ; in order to efficiently identify the exact opcode
-00001012                           120  ; ========================================================================
-00001012                           121  identifyOpcode:
-00001012  3012                     122          MOVE.W  (A2), D0    ; Move the value at A2 into D0 for bit testing
-00001014  0800 000F                123          BTST    #$F, D0     ; Check the 1st bit (from the left)
-00001018  6700 0006                124          BEQ     split0      ; Split based on the first bit
-0000101C  6000 006E                125          BRA     split1
-00001020                           126  
-00001020                           127  split0: 
-00001020  0800 000E                128          BTST    #$E, D0     ; Check the 2nd bit
-00001024  6700 0114                129          BEQ     decodeMOVE  ; MOVE follows 00+
-00001028  6000 0002                130          BRA     split01
-0000102C                           131          
-0000102C                           132  split01:
-0000102C  0800 000D                133          BTST    #$D, D0     ; Check the 3rd bit
-00001030  6700 0006                134          BEQ     split0100   ; Code is 010, but all subcodes are 0100
-00001034  6000 0032                135          BRA     split0110   ; Code is 011, but all subcodes are 0110        
-00001038                           136  
-00001038                           137  split0100:
-00001038  0800 0008                138          BTST    #$8, D0     ; Check the 8th bit for LEA
-0000103C  6600 0270                139          BNE     decodeLEA   ; LEA follows 0100XXX1+
-00001040  0800 000B                140          BTST    #$B, D0     ; Check the 5th bit for NOT
-00001044  6700 02E4                141          BEQ     decodeNOT   ; NOT follows 01000+
-00001048  0800 0009                142          BTST    #$9, D0     ; Check the 7th bit
-0000104C  6700 012A                143          BEQ     decodeMOVEM ; MOVEM follows 01001x0+
-00001050  6000 0002                144          BRA     split0100111
-00001054                           145  
-00001054                           146  split0100111:
-00001054  0800 0007                147          BTST    #$7, D0     ; Check the 9th bit for JSR
-00001058  6600 04C0                148          BNE     decodeJSR   ; JSR follows 010011101+
-0000105C  0800 0002                149          BTST    #$2, D0     ; Check the 14th bit
-00001060  6700 009A                150          BEQ     decodeNOP   ; NOP follows 01001110011100+
-00001064  6000 04F2                151          BRA     decodeRTS   ; RTS follows 01001110011101+
-00001068                           152  
-00001068                           153  split0110:
-00001068  0800 000B                154          BTST    #$B, D0     ; Check the 5th bit
-0000106C  6700 0006                155          BEQ     split01100
-00001070  6000 000E                156          BRA     split01101
-00001074                           157  
-00001074                           158  split01100:
-00001074  0800 000A                159          BTST    #$A, D0     ; Check the 6th bit
-00001078  6700 051C                160          BEQ     decodeBRA   ; BRA starts with 011000
-0000107C  6000 03E2                161          BRA     decodeBEQ   ; BEQ starts with 011001
-00001080                           162          
-00001080                           163  split01101:
-00001080  0800 0008                164          BTST    #$8, D0     ; Check the 8th bit
-00001084  6700 0418                165          BEQ     decodeBGE   ; BGE starts with 01101100
-00001088  6000 0452                166          BRA     decodeBLT   ; BLT starts with 01101101
-0000108C                           167          
-0000108C                           168  split1: 
-0000108C  0800 000E                169          BTST    #$E, D0     ; Check the 2nd bit
-00001090  6700 0006                170          BEQ     split10
-00001094  6000 000E                171          BRA     split11
-00001098                           172  
-00001098                           173  split10:
-00001098  0800 000C                174          BTST    #$C, D0     ; Check the 4th bit
-0000109C  6700 01D2                175          BEQ     decodeDIVU  ; DIVU follows 1000+
-000010A0  6000 0152                176          BRA     decodeSUB   ; SUB follows 1001+
-000010A4                           177  
-000010A4                           178  split11:
-000010A4  0800 000D                179          BTST    #$D, D0     ; Check the 3rd bit
-000010A8  6700 0006                180          BEQ     split110
-000010AC  6000 0026                181          BRA     split111
-000010B0                           182  
-000010B0                           183  split110:
-000010B0  0800 000C                184          BTST    #$C, D0     ; Check the 4th bit for ADD
-000010B4  6600 0100                185          BNE     decodeADD   ; ADD follows 1101+
-000010B8  0800 0008                186          BTST    #$8, D0     ; MULS.W has all 3 bits at 8, 9, and 10 set
-000010BC  6700 022E                187          BEQ     decodeAND   ; If any of these BTSTs show a 0, opcode is AND
-000010C0  0800 0007                188          BTST    #$7, D0
-000010C4  6700 0226                189          BEQ     decodeAND
-000010C8  0800 0006                190          BTST    #$6, D0
-000010CC  6700 021E                191          BEQ     decodeAND
-000010D0  6000 0160                192          BRA     decodeMULS  ; All 3 positions (8, 9, 10) were set
-000010D4                           193  
-000010D4                           194  split111:
-000010D4  0800 0007                195          BTST    #$7, D0     ; The 9th and 10th bit are set for Memory Shifts
-000010D8  6700 0016                196          BEQ     regShift    ; If 9 or 10 are cleared, this is a register shift
-000010DC  0800 0006                197          BTST    #$6, D0
-000010E0  6700 000E                198          BEQ     regShift
-000010E4  0800 0009                199          BTST    #$9, D0     ; Check 7th bit
-000010E8  6700 02FA                200          BEQ     decodeASx_M ; ASL_ASR Memory Shift follows 1110000x11+
-000010EC  6000 027A                201          BRA     decodeLSx_M ; LSL_LSR Memory Shift follows 1110001x11+
-000010F0                           202  
-000010F0                           203  regShift: ; Special split specifically for ASx/LSx Register Shifts
-000010F0  0800 0004                204          BTST    #$4, D0     ; Check the 12th bit
-000010F4  6700 032C                205          BEQ     decodeASx_R ; ASL_ASR Register Shift follows 1110xxxxxxx01+
-000010F8  6700 026E                206          BEQ     decodeLSx_M ; LSL_LSR Register Shift follows 1110xxxxxxx00+
-000010FC                           207  
-000010FC                           208  
-000010FC                           209  
-000010FC                           210  
-000010FC                           211  ; ========================================================================
-000010FC                           212  ; "decodeX" subroutines
-000010FC                           213  ; Gary, Dylan
-000010FC                           214  ; 
-000010FC                           215  ; Set of subroutines which are invoked by identifyOpcode.
-000010FC                           216  ; A decodeX subroutine will read from A2 and use TRAP #15 to output
-000010FC                           217  ; the instruction.
-000010FC                           218  ;
-000010FC                           219  ; For example, the "decodeLEA" subroutine will read A2 (which contains the
-000010FC                           220  ; opcode) to record the parameters (such as destination register). If the
-000010FC                           221  ; opcode indicates that the next word represents a destination address, then
-000010FC                           222  ; decodeLEA will advance A2 to the next word and decode that.
-000010FC                           223  ; To finish, decodeLEA will output the decoded instruction with TRAP #15
-000010FC                           224  ; ========================================================================
-000010FC                           225  
-000010FC                           226  ; ------------------------------------------------------------
-000010FC                           227  ; 1. "decodeNOP" subroutine
-000010FC                           228  ; AUTHOR
-000010FC                           229  ;
-000010FC                           230  ; TODO: DESCRIPTION
-000010FC                           231  ; ------------------------------------------------------------
-000010FC                           232  decodeNOP:
-000010FC                           233m         verifyOpcode    pNOP, (A2)
-00001138                           234          ; put code here
-00001138  4E75                     235          RTS                 ; Return from decodeNOP subroutine
-0000113A                           236  
-0000113A                           237  
-0000113A                           238  ; ------------------------------------------------------------
-0000113A                           239  ; 2. "decodeMOVE" subroutine
-0000113A                           240  ; AUTHOR
-0000113A                           241  ;
-0000113A                           242  ; TODO: DESCRIPTION
-0000113A                           243  ; ------------------------------------------------------------
-0000113A                           244  decodeMOVE:
-0000113A                           245m         verifyOpcode    pMOVE, (A2)
-00001176                           246          ; put code here
-00001176  4E75                     247          RTS                 ; Return from decodeMOVE subroutine
-00001178                           248  
-00001178                           249  
-00001178                           250  ; ------------------------------------------------------------
-00001178                           251  ; 3. "decodeMOVEM" subroutine
-00001178                           252  ; AUTHOR
-00001178                           253  ;
-00001178                           254  ; TODO: DESCRIPTION
-00001178                           255  ; ------------------------------------------------------------
-00001178                           256  decodeMOVEM:
-00001178                           257m         verifyOpcode    pMOVEM, (A2)
-000011B4                           258          ; put code here
-000011B4  4E75                     259          RTS                 ; Return from decodeMOVEM subroutine
-000011B6                           260  
-000011B6                           261  
-000011B6                           262  ; ------------------------------------------------------------
-000011B6                           263  ; 4. "decodeADD" subroutine
-000011B6                           264  ; AUTHOR
-000011B6                           265  ;
-000011B6                           266  ; TODO: DESCRIPTION
-000011B6                           267  ; ------------------------------------------------------------
-000011B6                           268  decodeADD:
-000011B6                           269m         verifyOpcode    pADD, (A2)
-000011F2                           270          ; put code here
-000011F2  4E75                     271          RTS                 ; Return from decodeADD subroutine
-000011F4                           272  
-000011F4                           273  
-000011F4                           274  ; ------------------------------------------------------------
-000011F4                           275  ; 5. "decodeSUB" subroutine
-000011F4                           276  ; AUTHOR
-000011F4                           277  ;
-000011F4                           278  ; TODO: DESCRIPTION
-000011F4                           279  ; ------------------------------------------------------------
-000011F4                           280  decodeSUB:
-000011F4                           281m         verifyOpcode    pSUB, (A2)
-00001230                           282          ; put code here
-00001230  4E75                     283          RTS                 ; Return from decodeSUB subroutine
-00001232                           284  
-00001232                           285  
-00001232                           286  ; ------------------------------------------------------------
-00001232                           287  ; 6. "decodeMULS" subroutine
-00001232                           288  ; AUTHOR
-00001232                           289  ;
-00001232                           290  ; TODO: DESCRIPTION MULS
-00001232                           291  ; ------------------------------------------------------------
-00001232                           292  decodeMULS:
-00001232                           293m         verifyOpcode    pMULS, (A2)
-0000126E                           294          ; put code here
-0000126E  4E75                     295          RTS                 ; Return from decodeMULS subroutine
-00001270                           296          
-00001270                           297          
-00001270                           298  ; ------------------------------------------------------------
-00001270                           299  ; 7. "decodeDIVU" subroutine
-00001270                           300  ; AUTHOR
-00001270                           301  ;
-00001270                           302  ; TODO: DESCRIPTION DIVU
-00001270                           303  ; ------------------------------------------------------------
-00001270                           304  decodeDIVU:
-00001270                           305m         verifyOpcode    pDIVU, (A2)
-000012AC                           306          ; put code here
-000012AC  4E75                     307          RTS                 ; Return from decodeDIVU subroutine
-000012AE                           308  
-000012AE                           309  
-000012AE                           310  ; ------------------------------------------------------------
-000012AE                           311  ; 8. "decodeLEA" subroutine
-000012AE                           312  ; AUTHOR
-000012AE                           313  ;
-000012AE                           314  ; TODO: DESCRIPTION
-000012AE                           315  ; ------------------------------------------------------------
-000012AE                           316  decodeLEA:
-000012AE                           317m         verifyOpcode    pLEA, (A2)
-000012EA                           318          ; put code here
-000012EA  4E75                     319          RTS                 ; Return from decodeLEA subroutine
-000012EC                           320  
-000012EC                           321  
-000012EC                           322  ; ------------------------------------------------------------
-000012EC                           323  ; 9. "decodeAND" subroutine
-000012EC                           324  ; AUTHOR
-000012EC                           325  ;
-000012EC                           326  ; TODO: DESCRIPTION
-000012EC                           327  ; ------------------------------------------------------------
-000012EC                           328  decodeAND:
-000012EC                           329m         verifyOpcode    pAND, (A2)
-00001328                           330          ; put code here
-00001328  4E75                     331          RTS                 ; Return from decodeAND subroutine
-0000132A                           332  
-0000132A                           333  
-0000132A                           334  ; ------------------------------------------------------------
-0000132A                           335  ; 10. "decodeNOT" subroutine
-0000132A                           336  ; AUTHOR
-0000132A                           337  ;
-0000132A                           338  ; TODO: DESCRIPTION
-0000132A                           339  ; ------------------------------------------------------------
-0000132A                           340  decodeNOT:
-0000132A                           341m         verifyOpcode    pNOT, (A2)
-00001366                           342          ; put code here
-00001366  4E75                     343          RTS                 ; Return from decodeNOT subroutine
-00001368                           344  
-00001368                           345  
-00001368                           346  ; ------------------------------------------------------------
-00001368                           347  ; 11a. "decodeLSx_M" subroutine
-00001368                           348  ; AUTHOR
-00001368                           349  ;
-00001368                           350  ; TODO: DESCRIPTION - LSL or LSR Memory Shift
-00001368                           351  ; ------------------------------------------------------------
-00001368                           352  decodeLSx_M:
-00001368                           353m         verifyOpcode    pLSx_M, (A2)
-000013A4                           354          ; put code here
-000013A4  4E75                     355          RTS                 ; Return from decodeLSx_M subroutine
-000013A6                           356  
-000013A6                           357  
-000013A6                           358  ; ------------------------------------------------------------
-000013A6                           359  ; 11b. "decodeLSx_R" subroutine
-000013A6                           360  ; AUTHOR
-000013A6                           361  ;
-000013A6                           362  ; TODO: DESCRIPTION - LSL or LSR Register Shift
-000013A6                           363  ; ------------------------------------------------------------
-000013A6                           364  decodeLSx_R:
-000013A6                           365m         verifyOpcode    pLSx_R, (A2)
-000013E2                           366          ; put code here
-000013E2  4E75                     367          RTS                 ; Return from ddecodeLSx_R subroutine
-000013E4                           368  
-000013E4                           369  
-000013E4                           370  ; ------------------------------------------------------------
-000013E4                           371  ; 12a. "decodeASx_M" subroutine
-000013E4                           372  ; AUTHOR
-000013E4                           373  ;
-000013E4                           374  ; TODO: DESCRIPTION - ASL or ASR Memory Shift
-000013E4                           375  ; ------------------------------------------------------------
-000013E4                           376  decodeASx_M:
-000013E4                           377m         verifyOpcode    pASx_M, (A2)
-00001420                           378          ; put code here
-00001420  4E75                     379          RTS                 ; Return from decodeASx_M subroutine
-00001422                           380  
-00001422                           381  
-00001422                           382  ; ------------------------------------------------------------
-00001422                           383  ; 12b. "decodeASx_R" subroutine
-00001422                           384  ; AUTHOR
-00001422                           385  ;
-00001422                           386  ; TODO: DESCRIPTION - ASL or ASR Register Shift
-00001422                           387  ; ------------------------------------------------------------
-00001422                           388  decodeASx_R:
-00001422                           389m         verifyOpcode    pASx_R, (A2)
-0000145E                           390          ; put code here
-0000145E  4E75                     391          RTS                 ; Return from decodeASx_R subroutine
-00001460                           392  
-00001460                           393  
-00001460                           394  ; ------------------------------------------------------------
-00001460                           395  ; 13a. "decodeBEQ" subroutine
-00001460                           396  ; AUTHOR
-00001460                           397  ;
-00001460                           398  ; TODO: DESCRIPTION
-00001460                           399  ; ------------------------------------------------------------
-00001460                           400  decodeBEQ:
-00001460                           401m         verifyOpcode    pBEQ, (A2)
-0000149C                           402          ; put code here
-0000149C  4E75                     403          RTS                 ; Return from decodeBEQ subroutine
-0000149E                           404  
-0000149E                           405  
-0000149E                           406  ; ------------------------------------------------------------
-0000149E                           407  ; 13b. "decodeBGE" subroutine
-0000149E                           408  ; AUTHOR
-0000149E                           409  ;
-0000149E                           410  ; TODO: DESCRIPTION
-0000149E                           411  ; ------------------------------------------------------------
-0000149E                           412  decodeBGE:
-0000149E                           413m         verifyOpcode    pBGE, (A2)
-000014DA                           414          ; put code here
-000014DA  4E75                     415          RTS                 ; Return from decodeBGE subroutine
-000014DC                           416  
-000014DC                           417  
-000014DC                           418  ; ------------------------------------------------------------
-000014DC                           419  ; 13c. "decodeBLT" subroutine
-000014DC                           420  ; AUTHOR
-000014DC                           421  ;
-000014DC                           422  ; TODO: DESCRIPTION
-000014DC                           423  ; ------------------------------------------------------------
-000014DC                           424  decodeBLT:
-000014DC                           425m         verifyOpcode    pBLT, (A2)
-00001518                           426          ; put code here
-00001518  4E75                     427          RTS                 ; Return from decodeBLT subroutine
-0000151A                           428  
-0000151A                           429  
-0000151A                           430  ; ------------------------------------------------------------
-0000151A                           431  ; 14. "decodeJSR" subroutine
-0000151A                           432  ; AUTHOR
-0000151A                           433  ;
-0000151A                           434  ; TODO: DESCRIPTION
-0000151A                           435  ; ------------------------------------------------------------
-0000151A                           436  decodeJSR:
-0000151A                           437m         verifyOpcode    pJSR, (A2)
-00001556                           438          ; put code here
-00001556  4E75                     439          RTS                 ; Return from decodeJSR subroutine
-00001558                           440  
-00001558                           441  
-00001558                           442  ; ------------------------------------------------------------
-00001558                           443  ; 15. "decodeRTS" subroutine
-00001558                           444  ; AUTHOR
-00001558                           445  ;
-00001558                           446  ; TODO: DESCRIPTION
-00001558                           447  ; ------------------------------------------------------------
-00001558                           448  decodeRTS:
-00001558                           449m         verifyOpcode    pRTS, (A2)
-00001594                           450          ; put code here
-00001594  4E75                     451          RTS                 ; Return from decodeRTS subroutine
-00001596                           452  
-00001596                           453  
-00001596                           454  ; ------------------------------------------------------------
-00001596                           455  ; 16. "decodeBRA" subroutine
-00001596                           456  ; AUTHOR
-00001596                           457  ;
-00001596                           458  ; TODO: DESCRIPTION
-00001596                           459  ; ------------------------------------------------------------
-00001596                           460  decodeBRA:
-00001596                           461m         verifyOpcode    pBRA, (A2)
-000015D2                           462          ; put code here
-000015D2  4E75                     463          RTS                 ; Return from decodeBRA subroutine
-000015D4                           464  
-000015D4                           465  
-000015D4                           466  
-000015D4                           467  
-000015D4                           468  ; ========================================================================
-000015D4                           469  ; Generic Helper Functions
-000015D4                           470  ; 
-000015D4                           471  ; Set of subroutines which do various tasks which are repeated frequently.
-000015D4                           472  ; Each helper function should be commented with required input and output.
-000015D4                           473  ; 
-000015D4                           474  ; If input is required, request through D0, D1, etc
-000015D4                           475  ; Return using D0
-000015D4                           476  ; ========================================================================
-000015D4                           477  
-000015D4                           478  ; ------------------------------------------------------------
-000015D4                           479  ; outputData
-000015D4                           480  ; Jonathan
-000015D4                           481  ;
-000015D4                           482  ; When an invalid opcode is found, outputs it as data
-000015D4                           483  ; ------------------------------------------------------------
-000015D4                           484  outputData:
-000015D4                           485          ; Put code here
-000015D4  4E75                     486          RTS                 ; Return from decodeBRA subroutine
-000015D6                           487  
-000015D6                           488  
-000015D6                           489  
-000015D6                           490  
-000015D6                           491  
-000015D6                           492  ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-000015D6                           493                              ; End of Code
-000015D6                           494          END    main         ; last line of source
+00000000                            19  ; Set of strings to be used with I/O of given instruction
+00000000                            20  ; ------------------------------------------------------------
+00000000= 4E 4F 50 00               21  oNOP:   DC.B    'NOP',0
+00000004= 4D 4F 56 45 00            22  oMOVE:  DC.B    'MOVE',0
+00000009= 4D 4F 56 45 4D 00         23  oMOVEM: DC.B    'MOVEM',0
+0000000F= 41 44 44 00               24  oADD:   DC.B    'ADD',0
+00000013= 53 55 42 00               25  oSUB:   DC.B    'SUB',0
+00000017= 4D 55 4C 53 00            26  oMULS:  DC.B    'MULS',0
+0000001C= 44 49 56 55 00            27  oDIVU:  DC.B    'DIVU',0
+00000021= 4C 45 41 00               28  oLEA:   DC.B    'LEA',0
+00000025= 41 4E 44 00               29  oAND:   DC.B    'AND',0
+00000029= 4E 4F 54 00               30  oNOT:   DC.B    'NOT',0
+0000002D= 4C 53 58 00               31  oLSx_M: DC.B    'LSX',0
+00000031= 4C 53 00                  32  oLSx_R: DC.B    'LS',0
+00000034= 4C 53 00                  33  oASx_M: DC.B    'LS',0
+00000037= 41 53 00                  34  oASx_R: DC.B    'AS',0
+0000003A= 41 53 00                  35  oBEQ:   DC.B    'AS',0
+0000003D= 42 47 45 00               36  oBGE:   DC.B    'BGE',0
+00000041= 42 4C 54 00               37  oBLT:   DC.B    'BLT',0
+00000045= 4A 53 52 00               38  oJSR:   DC.B    'JSR',0
+00000049= 52 54 53 00               39  oRTS:   DC.B    'RTS',0
+0000004D= 42 52 41 00               40  oBRA:   DC.B    'BRA',0
+00000051= 2E 42 20 00               41  oBSize  DC.B    '.B ',0
+00000055= 2E 57 20 00               42  oWSize  DC.B    '.W ',0
+00000059= 2E 4C 20 00               43  oLSize  DC.B    '.L ',0
+0000005D                            44  
+0000005D                            45  ; ------------------------------------------------------------
+0000005D                            46  ; "Pattern" Variables
+0000005D                            47  ; Jonathan
+0000005D                            48  ; 
+0000005D                            49  ; Set of strings to be used with verifyOpcode to check that the patterns match
+0000005D                            50  ; and the opcode isn't actually data
+0000005D                            51  ; ------------------------------------------------------------
+0000005D= 30 31 30 30 31 31 ...     52  pNOP:   DC.B    '0100111001110001',0
+0000006E= 30 30 2E 2E 2E 2E ...     53  pMOVE:  DC.B    '00..............',0
+0000007F= 30 31 30 30 31 2E ...     54  pMOVEM: DC.B    '01001.001.......',0
+00000090= 31 31 30 31 2E 2E ...     55  pADD:   DC.B    '1101............',0
+000000A1= 31 30 30 31 2E 2E ...     56  pSUB:   DC.B    '1001............',0
+000000B2= 31 31 30 30 2E 2E ...     57  pMULS:  DC.B    '1100...111......',0
+000000C3= 31 30 30 30 2E 2E ...     58  pDIVU:  DC.B    '1000...011......',0
+000000D4= 30 31 30 30 2E 2E ...     59  pLEA:   DC.B    '0100...111......',0
+000000E5= 31 31 30 30 2E 2E ...     60  pAND:   DC.B    '1100............',0
+000000F6= 30 31 30 30 30 31 ...     61  pNOT:   DC.B    '01000110........',0
+00000107= 31 31 31 30 30 30 ...     62  pLSx_M: DC.B    '1110001.11......',0
+00000118= 31 31 31 30 2E 2E ...     63  pLSx_R: DC.B    '1110.......01...',0
+00000129= 31 31 31 30 30 30 ...     64  pASx_M: DC.B    '1110000.11......',0
+0000013A= 31 31 31 30 2E 2E ...     65  pASx_R: DC.B    '1110.......00...',0
+0000014B= 30 31 31 30 30 31 ...     66  pBEQ:   DC.B    '01100111........',0
+0000015C= 30 31 31 30 31 31 ...     67  pBGE:   DC.B    '01101100........',0
+0000016D= 30 31 31 30 31 31 ...     68  pBLT:   DC.B    '01101101........',0
+0000017E= 30 31 30 30 31 31 ...     69  pJSR:   DC.B    '0100111010......',0
+0000018F= 30 31 30 30 31 31 ...     70  pRTS:   DC.B    '0100111001110101',0
+000001A0= 30 31 31 30 30 30 ...     71  pBRA:   DC.B    '01100000........',0
+000001B1                            72  
+000001B1                            73  
+000001B1                            74  ; ========================================================================
+000001B1                            75  ; Macros
+000001B1                            76  ; ========================================================================
+000001B1                            77  
+000001B1                            78  ; ------------------------------------------------------------
+000001B1                            79  ; "verifyOpcode" Helper
+000001B1                            80  ; Jonathan
+000001B1                            81  ;
+000001B1                            82  ; 1st argument is a template string (e.g. "0100...111......" for LEA)
+000001B1                            83  ; 2nd argument is a data register to check against the template
+000001B1                            84  ;
+000001B1                            85  ; Verifies that the opcode passed through \2 matches the pattern of \1
+000001B1                            86  ; If they do not match, branches to outputData
+000001B1                            87  ; ------------------------------------------------------------
+000001B1                            88  verifyOpcode:  MACRO
+000001B1                            89          LEA     \1, A1      ; Input pattern string
+000001B1                            90          MOVE.W  \2, D0      ; input value
+000001B1                            91          MOVE.B  #15, D1     ; Counter tracking the bit position of D0
+000001B1                            92          
+000001B1                            93  loop\@: 
+000001B1                            94          CMP.B   #$30, (A1)  ; Check if the template wants a 0
+000001B1                            95          BEQ     checkFor0\@
+000001B1                            96          CMP.B   #$31, (A1)  ; Check if the template wants a 1
+000001B1                            97          BEQ     checkFor1\@
+000001B1                            98          BRA     next\@      ; Template has a wildcard, go to next iteration
+000001B1                            99          
+000001B1                           100  checkFor0\@: 
+000001B1                           101          BTST    D1, D0      ; Check if contains 0
+000001B1                           102          BNE     outputData  ; Missing a 0 -> Not a valid opcode
+000001B1                           103          BRA     next\@
+000001B1                           104  
+000001B1                           105  checkFor1\@:
+000001B1                           106          BTST    D1, D0      ; Check if contains 1
+000001B1                           107          BEQ     outputData  ; Missing a 1 -> Not a valid opcode
+000001B1                           108  
+000001B1                           109  next\@: 
+000001B1                           110          CMP.B   #0, D1      ; Compare bit counter to 0
+000001B1                           111          BEQ     complete\@  ; Branch to complete if bit counter reached 0
+000001B1                           112          SUB.B   #1, D1      ; Continuing loop -> Decrement bit counter
+000001B1                           113          MOVE.B  (A1)+, D3   ; Move A1 to the next pointer (D3 irrelevant)
+000001B1                           114          BRA     loop\@      ; Begin loop again
+000001B1                           115  
+000001B1                           116  complete\@:  ; Opcode has been verified
+000001B1                           117          ENDM
+000001B1                           118          
+000001B1                           119  ; ------------------------------------------------------------
+000001B1                           120  ; "printSize" Helper
+000001B1                           121  ; Gary
+000001B1                           122  ;
+000001B1                           123  ; 1st argument is a data argument to check against three possible sizes
+000001B1                           124  ;
+000001B1                           125  ; Uses no TRAP #15 without CR,LF (no new line) to add on size to opcode.
+000001B1                           126  ; This is done by bit (13 and 12) checking /1 and appending the size to already 
+000001B1                           127  ; printed opcode.  This is only called by opcodes that need size (only MOVE).
+000001B1                           128  ; D4 has value added representing the amount of subsequent words to be scanned.
+000001B1                           129  ; NOTE: POSSIBLY NEED TO INSERT SOME ERROR CHECKING?
+000001B1                           130  ; NOTE: MODULARIZE SO OPMODE CHECKING IS CLEANED UP
+000001B1                           131  ; ------------------------------------------------------------
+000001B1                           132  printSize:  MACRO
+000001B1                           133          MOVE.W  \1, D0      ; input value      
+000001B1                           134  checkForB\@: 
+000001B1                           135          BTST    #13, D0      ; Check if contains 0
+000001B1                           136          BNE     checkForW\@  ; If not go to word size
+000001B1                           137          LEA     oBSize, A1     
+000001B1                           138          MOVE.B  #14,D0          
+000001B1                           139          TRAP    #15
+000001B1                           140          BRA     complete\@      
+000001B1                           141  checkForW\@: 
+000001B1                           142          BTST    #12, D0      ; Check if contains 0
+000001B1                           143          BEQ     checkForL\@
+000001B1                           144          LEA     oWSize, A1     
+000001B1                           145          MOVE.B  #14,D0          
+000001B1                           146          TRAP    #15
+000001B1                           147          BRA     complete\@  
+000001B1                           148  checkForL\@:
+000001B1                           149          LEA     oLSize, A1     
+000001B1                           150          MOVE.B  #14,D0          
+000001B1                           151          TRAP    #15
+000001B1                           152  complete\@:  ; Size has been printed
+000001B1                           153          ENDM
+000001B1                           154          
+000001B1                           155  ; ------------------------------------------------------------
+000001B1                           156  ; "printOpMode" Helper
+000001B1                           157  ; Gary
+000001B1                           158  ;
+000001B1                           159  ; 1st argument is a data argument to check against six possible modes
+000001B1                           160  ;
+000001B1                           161  ; Uses no TRAP #15 without CR,LF (no new line) to add on opMode to opcode.
+000001B1                           162  ; This is done by bit (6 to 8) checking /1 and appending the size to already 
+000001B1                           163  ; printed opcode.  This is only called by opcodes that need opMode.
+000001B1                           164  ; D4 has value added representing the amount of subsequent words to be scanned.
+000001B1                           165  ; NOTE: FIX COMMENT BLOCKS
+000001B1                           166  ; NOTE: POSSIBLY NEED TO INSERT SOME ERROR CHECKING?
+000001B1                           167  ; ------------------------------------------------------------
+000001B1                           168  printOpMode:  MACRO
+000001B1                           169          MOVE.W  \1, D0      ; input value
+000001B1                           170          MOVE.B  #8, D1     ; Counter tracking the bit position of D0      
+000001B1                           171          
+000001B1                           172  checkForDestDn\@: 
+000001B1                           173          BTST    D1, D0      ; Check if contains 0
+000001B1                           174          BNE     checkForSrcDn\@
+000001B1                           175          JSR     next\@
+000001B1                           176          BTST    D1, D0      ; Check if contains 0
+000001B1                           177          BEQ     DestDnW\@
+000001B1                           178  DestDnL\@:        
+000001B1                           179          LEA     oLSize, A1     
+000001B1                           180          MOVE.B  #14,D0          
+000001B1                           181          TRAP    #15
+000001B1                           182          BRA     complete\@ 
+000001B1                           183  DestDnW\@: 
+000001B1                           184          JSR     next\@
+000001B1                           185          BTST    D1, D0      ; Check if contains 0
+000001B1                           186          BEQ     DestDnB\@
+000001B1                           187          LEA     oWSize, A1     
+000001B1                           188          MOVE.B  #14,D0          
+000001B1                           189          TRAP    #15
+000001B1                           190          BRA     complete\@ 
+000001B1                           191  DestDnB\@: 
+000001B1                           192          LEA     oBSize, A1     
+000001B1                           193          MOVE.B  #14,D0          
+000001B1                           194          TRAP    #15
+000001B1                           195          BRA     complete\@ 
+000001B1                           196  checkForSrcDn\@: 
+000001B1                           197          JSR     next\@
+000001B1                           198          BTST    D1, D0      ; Check if contains 0
+000001B1                           199          BEQ     SrcDnW\@
+000001B1                           200  SrcDnL\@:        
+000001B1                           201          LEA     oLSize, A1     
+000001B1                           202          MOVE.B  #14,D0          
+000001B1                           203          TRAP    #15
+000001B1                           204          BRA     complete\@ 
+000001B1                           205  SrcDnW\@:
+000001B1                           206          JSR     next\@
+000001B1                           207          BTST    D1, D0      ; Check if contains 0
+000001B1                           208          BEQ     SrcDnB\@
+000001B1                           209          LEA     oWSize, A1     
+000001B1                           210          MOVE.B  #14,D0          
+000001B1                           211          TRAP    #15
+000001B1                           212          BRA     complete\@ 
+000001B1                           213  SrcDnB\@: 
+000001B1                           214          LEA     oBSize, A1     
+000001B1                           215          MOVE.B  #14,D0          
+000001B1                           216          TRAP    #15
+000001B1                           217          BRA     complete\@ 
+000001B1                           218  
+000001B1                           219  next\@:
+000001B1                           220          SUB.B   #1, D1      ; Continuing loop -> Decrement bit counter
+000001B1                           221          RTS                 ; HONESTLY KIND OF NOT NEEDED CAN BE TOSSED INTO BODY
+000001B1                           222  complete\@:  ; Opcode has been verified
+000001B1                           223          ENDM
+000001B1                           224  ; ------------------------------------------------------------
+000001B1                           225  ; "decodeAdrMode" Helper
+000001B1                           226  ; Gary
+000001B1                           227  ; 3 to 8
+000001B1                           228  ; ------------------------------------------------------------
+000001B1                           229  decodeAdrMode:  MACRO
+000001B1                           230          MOVE.B  #11, D1     ; Counter tracking the bit position of D0
+000001B1                           231          
+000001B1                           232  
+000001B1                           233  next\@:
+000001B1                           234          SUB.B   #2, D1      ; Continuing loop -> Decrement bit counter
+000001B1                           235          RTS      
+000001B1                           236  
+000001B1                           237  complete\@:  ; Opcode has been verified
+000001B1                           238          ENDM
+000001B1                           239  
+000001B1                           240  
+000001B1                           241  ; +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+000001B1                           242  ; "main" routine
+000001B1                           243  ; Dylan, Gary
+000001B1                           244  ; 
+000001B1                           245  ; TODO: DESCRIPTION OF MAIN ROUTINE FUNCTIONALITY
+000001B1                           246  ; ========================================================================
+00001000                           247          ORG     $1000
+00001000                           248  
+00001000                           249  
+00001000  45F8 6000                250  main:   LEA     $6000, A2      ; Testing identifyOpcode
+00001004  34BC D353                251          MOVE.W  #$D353, (A2)
+00001008  4EB9 00001012            252          JSR     identifyOpcode
+0000100E                           253          
+0000100E  FFFF FFFF                254          SIMHALT             ; halt simulator
+00001012                           255          
+00001012                           256          
+00001012                           257  ; ========================================================================
+00001012                           258  ; "identifyOpcode" subroutine
+00001012                           259  ; Jonathan
+00001012                           260  ; 
+00001012                           261  ; Reads the Word at A2 and determines which opcode it represents.
+00001012                           262  ; When the opcode is identified, the appropriate "decodeX" subroutine
+00001012                           263  ; is invoked.
+00001012                           264  ;
+00001012                           265  ; Uses a generated Trie structure to determine where to split on which bits
+00001012                           266  ; in order to efficiently identify the exact opcode
+00001012                           267  ; ========================================================================
+00001012                           268  identifyOpcode:
+00001012  3012                     269          MOVE.W  (A2), D0    ; Move the value at A2 into D0 for bit testing
+00001014  0800 000F                270          BTST    #$F, D0     ; Check the 1st bit (from the left)
+00001018  6700 0006                271          BEQ     split0      ; Split based on the first bit
+0000101C  6000 006E                272          BRA     split1
+00001020                           273  
+00001020                           274  split0: 
+00001020  0800 000E                275          BTST    #$E, D0     ; Check the 2nd bit
+00001024  6700 011E                276          BEQ     decodeMOVE  ; MOVE follows 00+
+00001028  6000 0002                277          BRA     split01
+0000102C                           278          
+0000102C                           279  split01:
+0000102C  0800 000D                280          BTST    #$D, D0     ; Check the 3rd bit
+00001030  6700 0006                281          BEQ     split0100   ; Code is 010, but all subcodes are 0100
+00001034  6000 0032                282          BRA     split0110   ; Code is 011, but all subcodes are 0110        
+00001038                           283  
+00001038                           284  split0100:
+00001038  0800 0008                285          BTST    #$8, D0     ; Check the 8th bit for LEA
+0000103C  6600 031E                286          BNE     decodeLEA   ; LEA follows 0100XXX1+
+00001040  0800 000B                287          BTST    #$B, D0     ; Check the 5th bit for NOT
+00001044  6700 0392                288          BEQ     decodeNOT   ; NOT follows 01000+
+00001048  0800 0009                289          BTST    #$9, D0     ; Check the 7th bit
+0000104C  6700 0176                290          BEQ     decodeMOVEM ; MOVEM follows 01001x0+
+00001050  6000 0002                291          BRA     split0100111
+00001054                           292  
+00001054                           293  split0100111:
+00001054  0800 0007                294          BTST    #$7, D0     ; Check the 9th bit for JSR
+00001058  6600 056E                295          BNE     decodeJSR   ; JSR follows 010011101+
+0000105C  0800 0002                296          BTST    #$2, D0     ; Check the 14th bit
+00001060  6700 009A                297          BEQ     decodeNOP   ; NOP follows 01001110011100+
+00001064  6000 05A0                298          BRA     decodeRTS   ; RTS follows 01001110011101+
+00001068                           299  
+00001068                           300  split0110:
+00001068  0800 000B                301          BTST    #$B, D0     ; Check the 5th bit
+0000106C  6700 0006                302          BEQ     split01100
+00001070  6000 000E                303          BRA     split01101
+00001074                           304  
+00001074                           305  split01100:
+00001074  0800 000A                306          BTST    #$A, D0     ; Check the 6th bit
+00001078  6700 05D4                307          BEQ     decodeBRA   ; BRA starts with 011000
+0000107C  6000 0490                308          BRA     decodeBEQ   ; BEQ starts with 011001
+00001080                           309          
+00001080                           310  split01101:
+00001080  0800 0008                311          BTST    #$8, D0     ; Check the 8th bit
+00001084  6700 04C6                312          BEQ     decodeBGE   ; BGE starts with 01101100
+00001088  6000 0500                313          BRA     decodeBLT   ; BLT starts with 01101101
+0000108C                           314          
+0000108C                           315  split1: 
+0000108C  0800 000E                316          BTST    #$E, D0     ; Check the 2nd bit
+00001090  6700 0006                317          BEQ     split10
+00001094  6000 000E                318          BRA     split11
+00001098                           319  
+00001098                           320  split10:
+00001098  0800 000C                321          BTST    #$C, D0     ; Check the 4th bit
+0000109C  6700 0280                322          BEQ     decodeDIVU  ; DIVU follows 1000+
+000010A0  6000 0200                323          BRA     decodeSUB   ; SUB follows 1001+
+000010A4                           324  
+000010A4                           325  split11:
+000010A4  0800 000D                326          BTST    #$D, D0     ; Check the 3rd bit
+000010A8  6700 0006                327          BEQ     split110
+000010AC  6000 0026                328          BRA     split111
+000010B0                           329  
+000010B0                           330  split110:
+000010B0  0800 000C                331          BTST    #$C, D0     ; Check the 4th bit for ADD
+000010B4  6600 014C                332          BNE     decodeADD   ; ADD follows 1101+
+000010B8  0800 0008                333          BTST    #$8, D0     ; MULS.W has all 3 bits at 8, 9, and 10 set
+000010BC  6700 02DC                334          BEQ     decodeAND   ; If any of these BTSTs show a 0, opcode is AND
+000010C0  0800 0007                335          BTST    #$7, D0
+000010C4  6700 02D4                336          BEQ     decodeAND
+000010C8  0800 0006                337          BTST    #$6, D0
+000010CC  6700 02CC                338          BEQ     decodeAND
+000010D0  6000 020E                339          BRA     decodeMULS  ; All 3 positions (8, 9, 10) were set
+000010D4                           340  
+000010D4                           341  split111:
+000010D4  0800 0007                342          BTST    #$7, D0     ; The 9th and 10th bit are set for Memory Shifts
+000010D8  6700 0016                343          BEQ     regShift    ; If 9 or 10 are cleared, this is a register shift
+000010DC  0800 0006                344          BTST    #$6, D0
+000010E0  6700 000E                345          BEQ     regShift
+000010E4  0800 0009                346          BTST    #$9, D0     ; Check 7th bit
+000010E8  6700 03A8                347          BEQ     decodeASx_M ; ASL_ASR Memory Shift follows 1110000x11+
+000010EC  6000 0328                348          BRA     decodeLSx_M ; LSL_LSR Memory Shift follows 1110001x11+
+000010F0                           349  
+000010F0                           350  regShift: ; Special split specifically for ASx/LSx Register Shifts
+000010F0  0800 0004                351          BTST    #$4, D0     ; Check the 12th bit
+000010F4  6700 03DA                352          BEQ     decodeASx_R ; ASL_ASR Register Shift follows 1110xxxxxxx01+
+000010F8  6700 031C                353          BEQ     decodeLSx_M ; LSL_LSR Register Shift follows 1110xxxxxxx00+
+000010FC                           354  
+000010FC                           355  
+000010FC                           356  
+000010FC                           357  
+000010FC                           358  ; ========================================================================
+000010FC                           359  ; "decodeX" subroutines
+000010FC                           360  ; Gary, Dylan
+000010FC                           361  ; 
+000010FC                           362  ; Set of subroutines which are invoked by identifyOpcode.
+000010FC                           363  ; A decodeX subroutine will read from A2 and use TRAP #15 to output
+000010FC                           364  ; the instruction.
+000010FC                           365  ;
+000010FC                           366  ; For example, the "decodeLEA" subroutine will read A2 (which contains the
+000010FC                           367  ; opcode) to record the parameters (such as destination register). If the
+000010FC                           368  ; opcode indicates that the next word represents a destination address, then
+000010FC                           369  ; decodeLEA will advance A2 to the next word and decode that.
+000010FC                           370  ; To finish, decodeLEA will output the decoded instruction with TRAP #15
+000010FC                           371  ; ========================================================================
+000010FC                           372  
+000010FC                           373  ; ------------------------------------------------------------
+000010FC                           374  ; 1. "decodeNOP" subroutine
+000010FC                           375  ; AUTHOR
+000010FC                           376  ;
+000010FC                           377  ; TODO: DESCRIPTION
+000010FC                           378  ; ------------------------------------------------------------
+000010FC                           379  decodeNOP:
+000010FC                           380m         verifyOpcode    pNOP, (A2)
+00001138  43F8 0000                381          LEA     oNOP, A1     ; Loads byteVAR
+0000113C  103C 000E                382          MOVE.B  #14,D0          
+00001140  4E4F                     383          TRAP    #15
+00001142  4E75                     384          RTS                 ; Return from decodeNOP subroutine
+00001144                           385  
+00001144                           386  
+00001144                           387  ; ------------------------------------------------------------
+00001144                           388  ; 2. "decodeMOVE" subroutine
+00001144                           389  ; AUTHOR
+00001144                           390  ;
+00001144                           391  ; TODO: DESCRIPTION
+00001144                           392  ; ------------------------------------------------------------
+00001144                           393  decodeMOVE:
+00001144                           394m         verifyOpcode    pMOVE, (A2)
+00001180  43F8 0004                395          LEA     oMOVE, A1     
+00001184  103C 000E                396          MOVE.B  #14,D0          
+00001188  4E4F                     397          TRAP    #15
+0000118A                           398m         printSize       (A2)
+000011C2  4E75                     399          RTS                 ; Return from decodeMOVE subroutine
+000011C4                           400  
+000011C4                           401  
+000011C4                           402  ; ------------------------------------------------------------
+000011C4                           403  ; 3. "decodeMOVEM" subroutine
+000011C4                           404  ; AUTHOR
+000011C4                           405  ;
+000011C4                           406  ; TODO: DESCRIPTION
+000011C4                           407  ; ------------------------------------------------------------
+000011C4                           408  decodeMOVEM:
+000011C4                           409m         verifyOpcode    pMOVEM, (A2)
+00001200                           410          ; put code here
+00001200  4E75                     411          RTS                 ; Return from decodeMOVEM subroutine
+00001202                           412  
+00001202                           413  
+00001202                           414  ; ------------------------------------------------------------
+00001202                           415  ; 4. "decodeADD" subroutine
+00001202                           416  ; AUTHOR
+00001202                           417  ;
+00001202                           418  ; TODO: DESCRIPTION
+00001202                           419  ; ------------------------------------------------------------
+00001202                           420  decodeADD:
+00001202                           421          ;verifyOpcode    pADD, (A2)
+00001202  43F8 000F                422          LEA     oADD, A1     
+00001206  103C 000E                423          MOVE.B  #14,D0          
+0000120A  4E4F                     424          TRAP    #15
+0000120C                           425m         printOpMode     (A2)
+000012A0  4E75                     426          RTS                 ; Return from decodeADD subroutine
+000012A2                           427  
+000012A2                           428  
+000012A2                           429  ; ------------------------------------------------------------
+000012A2                           430  ; 5. "decodeSUB" subroutine
+000012A2                           431  ; AUTHOR
+000012A2                           432  ;
+000012A2                           433  ; TODO: DESCRIPTION
+000012A2                           434  ; ------------------------------------------------------------
+000012A2                           435  decodeSUB:
+000012A2                           436m         verifyOpcode    pSUB, (A2)
+000012DE                           437          ; put code here
+000012DE  4E75                     438          RTS                 ; Return from decodeSUB subroutine
+000012E0                           439  
+000012E0                           440  
+000012E0                           441  ; ------------------------------------------------------------
+000012E0                           442  ; 6. "decodeMULS" subroutine
+000012E0                           443  ; AUTHOR
+000012E0                           444  ;
+000012E0                           445  ; TODO: DESCRIPTION MULS
+000012E0                           446  ; ------------------------------------------------------------
+000012E0                           447  decodeMULS:
+000012E0                           448m         verifyOpcode    pMULS, (A2)
+0000131C                           449          ; put code here
+0000131C  4E75                     450          RTS                 ; Return from decodeMULS subroutine
+0000131E                           451          
+0000131E                           452          
+0000131E                           453  ; ------------------------------------------------------------
+0000131E                           454  ; 7. "decodeDIVU" subroutine
+0000131E                           455  ; AUTHOR
+0000131E                           456  ;
+0000131E                           457  ; TODO: DESCRIPTION DIVU
+0000131E                           458  ; ------------------------------------------------------------
+0000131E                           459  decodeDIVU:
+0000131E                           460m         verifyOpcode    pDIVU, (A2)
+0000135A                           461          ; put code here
+0000135A  4E75                     462          RTS                 ; Return from decodeDIVU subroutine
+0000135C                           463  
+0000135C                           464  
+0000135C                           465  ; ------------------------------------------------------------
+0000135C                           466  ; 8. "decodeLEA" subroutine
+0000135C                           467  ; AUTHOR
+0000135C                           468  ;
+0000135C                           469  ; TODO: DESCRIPTION
+0000135C                           470  ; ------------------------------------------------------------
+0000135C                           471  decodeLEA:
+0000135C                           472m         verifyOpcode    pLEA, (A2)
+00001398                           473          ; put code here
+00001398  4E75                     474          RTS                 ; Return from decodeLEA subroutine
+0000139A                           475  
+0000139A                           476  
+0000139A                           477  ; ------------------------------------------------------------
+0000139A                           478  ; 9. "decodeAND" subroutine
+0000139A                           479  ; AUTHOR
+0000139A                           480  ;
+0000139A                           481  ; TODO: DESCRIPTION
+0000139A                           482  ; ------------------------------------------------------------
+0000139A                           483  decodeAND:
+0000139A                           484m         verifyOpcode    pAND, (A2)
+000013D6                           485          ; put code here
+000013D6  4E75                     486          RTS                 ; Return from decodeAND subroutine
+000013D8                           487  
+000013D8                           488  
+000013D8                           489  ; ------------------------------------------------------------
+000013D8                           490  ; 10. "decodeNOT" subroutine
+000013D8                           491  ; AUTHOR
+000013D8                           492  ;
+000013D8                           493  ; TODO: DESCRIPTION
+000013D8                           494  ; ------------------------------------------------------------
+000013D8                           495  decodeNOT:
+000013D8                           496m         verifyOpcode    pNOT, (A2)
+00001414                           497          ; put code here
+00001414  4E75                     498          RTS                 ; Return from decodeNOT subroutine
+00001416                           499  
+00001416                           500  
+00001416                           501  ; ------------------------------------------------------------
+00001416                           502  ; 11a. "decodeLSx_M" subroutine
+00001416                           503  ; AUTHOR
+00001416                           504  ;
+00001416                           505  ; TODO: DESCRIPTION - LSL or LSR Memory Shift
+00001416                           506  ; ------------------------------------------------------------
+00001416                           507  decodeLSx_M:
+00001416                           508m         verifyOpcode    pLSx_M, (A2)
+00001452                           509          ; put code here
+00001452  4E75                     510          RTS                 ; Return from decodeLSx_M subroutine
+00001454                           511  
+00001454                           512  
+00001454                           513  ; ------------------------------------------------------------
+00001454                           514  ; 11b. "decodeLSx_R" subroutine
+00001454                           515  ; AUTHOR
+00001454                           516  ;
+00001454                           517  ; TODO: DESCRIPTION - LSL or LSR Register Shift
+00001454                           518  ; ------------------------------------------------------------
+00001454                           519  decodeLSx_R:
+00001454                           520m         verifyOpcode    pLSx_R, (A2)
+00001490                           521          ; put code here
+00001490  4E75                     522          RTS                 ; Return from ddecodeLSx_R subroutine
+00001492                           523  
+00001492                           524  
+00001492                           525  ; ------------------------------------------------------------
+00001492                           526  ; 12a. "decodeASx_M" subroutine
+00001492                           527  ; AUTHOR
+00001492                           528  ;
+00001492                           529  ; TODO: DESCRIPTION - ASL or ASR Memory Shift
+00001492                           530  ; ------------------------------------------------------------
+00001492                           531  decodeASx_M:
+00001492                           532m         verifyOpcode    pASx_M, (A2)
+000014CE                           533          ; put code here
+000014CE  4E75                     534          RTS                 ; Return from decodeASx_M subroutine
+000014D0                           535  
+000014D0                           536  
+000014D0                           537  ; ------------------------------------------------------------
+000014D0                           538  ; 12b. "decodeASx_R" subroutine
+000014D0                           539  ; AUTHOR
+000014D0                           540  ;
+000014D0                           541  ; TODO: DESCRIPTION - ASL or ASR Register Shift
+000014D0                           542  ; ------------------------------------------------------------
+000014D0                           543  decodeASx_R:
+000014D0                           544m         verifyOpcode    pASx_R, (A2)
+0000150C                           545          ; put code here
+0000150C  4E75                     546          RTS                 ; Return from decodeASx_R subroutine
+0000150E                           547  
+0000150E                           548  
+0000150E                           549  ; ------------------------------------------------------------
+0000150E                           550  ; 13a. "decodeBEQ" subroutine
+0000150E                           551  ; AUTHOR
+0000150E                           552  ;
+0000150E                           553  ; TODO: DESCRIPTION
+0000150E                           554  ; ------------------------------------------------------------
+0000150E                           555  decodeBEQ:
+0000150E                           556m         verifyOpcode    pBEQ, (A2)
+0000154A                           557          ; put code here
+0000154A  4E75                     558          RTS                 ; Return from decodeBEQ subroutine
+0000154C                           559  
+0000154C                           560  
+0000154C                           561  ; ------------------------------------------------------------
+0000154C                           562  ; 13b. "decodeBGE" subroutine
+0000154C                           563  ; AUTHOR
+0000154C                           564  ;
+0000154C                           565  ; TODO: DESCRIPTION
+0000154C                           566  ; ------------------------------------------------------------
+0000154C                           567  decodeBGE:
+0000154C                           568m         verifyOpcode    pBGE, (A2)
+00001588                           569          ; put code here
+00001588  4E75                     570          RTS                 ; Return from decodeBGE subroutine
+0000158A                           571  
+0000158A                           572  
+0000158A                           573  ; ------------------------------------------------------------
+0000158A                           574  ; 13c. "decodeBLT" subroutine
+0000158A                           575  ; AUTHOR
+0000158A                           576  ;
+0000158A                           577  ; TODO: DESCRIPTION
+0000158A                           578  ; ------------------------------------------------------------
+0000158A                           579  decodeBLT:
+0000158A                           580m         verifyOpcode    pBLT, (A2)
+000015C6                           581          ; put code here
+000015C6  4E75                     582          RTS                 ; Return from decodeBLT subroutine
+000015C8                           583  
+000015C8                           584  
+000015C8                           585  ; ------------------------------------------------------------
+000015C8                           586  ; 14. "decodeJSR" subroutine
+000015C8                           587  ; AUTHOR
+000015C8                           588  ;
+000015C8                           589  ; TODO: DESCRIPTION
+000015C8                           590  ; ------------------------------------------------------------
+000015C8                           591  decodeJSR:
+000015C8                           592m         verifyOpcode    pJSR, (A2)
+00001604                           593          ; put code here
+00001604  4E75                     594          RTS                 ; Return from decodeJSR subroutine
+00001606                           595  
+00001606                           596  
+00001606                           597  ; ------------------------------------------------------------
+00001606                           598  ; 15. "decodeRTS" subroutine
+00001606                           599  ; AUTHOR
+00001606                           600  ;
+00001606                           601  ; TODO: DESCRIPTION
+00001606                           602  ; ------------------------------------------------------------
+00001606                           603  decodeRTS:
+00001606                           604m         verifyOpcode    pRTS, (A2)
+00001642  43F8 0049                605          LEA     oRTS, A1     
+00001646  103C 000E                606          MOVE.B  #14,D0          
+0000164A  4E4F                     607          TRAP    #15
+0000164C  4E75                     608          RTS                 ; Return from decodeRTS subroutine
+0000164E                           609  
+0000164E                           610  
+0000164E                           611  ; ------------------------------------------------------------
+0000164E                           612  ; 16. "decodeBRA" subroutine
+0000164E                           613  ; AUTHOR
+0000164E                           614  ;
+0000164E                           615  ; TODO: DESCRIPTION
+0000164E                           616  ; ------------------------------------------------------------
+0000164E                           617  decodeBRA:
+0000164E                           618m         verifyOpcode    pBRA, (A2)
+0000168A                           619          ; put code here
+0000168A  4E75                     620          RTS                 ; Return from decodeBRA subroutine
+0000168C                           621  
+0000168C                           622  
+0000168C                           623  
+0000168C                           624  
+0000168C                           625  ; ========================================================================
+0000168C                           626  ; Generic Helper Functions
+0000168C                           627  ; 
+0000168C                           628  ; Set of subroutines which do various tasks which are repeated frequently.
+0000168C                           629  ; Each helper function should be commented with required input and output.
+0000168C                           630  ; 
+0000168C                           631  ; If input is required, request through D0, D1, etc
+0000168C                           632  ; Return using D0
+0000168C                           633  ; ========================================================================
+0000168C                           634  
+0000168C                           635  ; ------------------------------------------------------------
+0000168C                           636  ; outputData
+0000168C                           637  ; Jonathan
+0000168C                           638  ;
+0000168C                           639  ; When an invalid opcode is found, outputs it as data
+0000168C                           640  ; ------------------------------------------------------------
+0000168C                           641  outputData:
+0000168C  324A                     642          MOVEA    A2, A1     
+0000168E  14BC 000D                643          MOVE.B  #$d, (A2) 
+00001692  103C 000E                644          MOVE.B  #14,D0          
+00001696  4E4F                     645          TRAP    #15
+00001698  4E75                     646          RTS                 ; Return from decodeBRA subroutine
+0000169A                           647  
+0000169A                           648  
+0000169A                           649  
+0000169A                           650  
+0000169A                           651  
+0000169A                           652  ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+0000169A                           653                              ; End of Code
+0000169A                           654          END    main         ; last line of source
 
 No errors detected
 No warnings generated
@@ -505,148 +665,180 @@ SYMBOL TABLE INFORMATION
 Symbol-name         Value
 -------------------------
 CHECKFOR0_1         111A
-CHECKFOR0_10        1348
-CHECKFOR0_11        1386
-CHECKFOR0_12        13C4
-CHECKFOR0_13        1402
-CHECKFOR0_14        1440
-CHECKFOR0_15        147E
-CHECKFOR0_16        14BC
-CHECKFOR0_17        14FA
-CHECKFOR0_18        1538
-CHECKFOR0_19        1576
-CHECKFOR0_2         1158
-CHECKFOR0_20        15B4
-CHECKFOR0_3         1196
-CHECKFOR0_4         11D4
-CHECKFOR0_5         1212
-CHECKFOR0_6         1250
-CHECKFOR0_7         128E
-CHECKFOR0_8         12CC
-CHECKFOR0_9         130A
+CHECKFOR0_10        13B8
+CHECKFOR0_11        13F6
+CHECKFOR0_12        1434
+CHECKFOR0_13        1472
+CHECKFOR0_14        14B0
+CHECKFOR0_15        14EE
+CHECKFOR0_16        152C
+CHECKFOR0_17        156A
+CHECKFOR0_18        15A8
+CHECKFOR0_19        15E6
+CHECKFOR0_2         1162
+CHECKFOR0_20        1624
+CHECKFOR0_21        166C
+CHECKFOR0_4         11E2
+CHECKFOR0_6         12C0
+CHECKFOR0_7         12FE
+CHECKFOR0_8         133C
+CHECKFOR0_9         137A
 CHECKFOR1_1         1124
-CHECKFOR1_10        1352
-CHECKFOR1_11        1390
-CHECKFOR1_12        13CE
-CHECKFOR1_13        140C
-CHECKFOR1_14        144A
-CHECKFOR1_15        1488
-CHECKFOR1_16        14C6
-CHECKFOR1_17        1504
-CHECKFOR1_18        1542
-CHECKFOR1_19        1580
-CHECKFOR1_2         1162
-CHECKFOR1_20        15BE
-CHECKFOR1_3         11A0
-CHECKFOR1_4         11DE
-CHECKFOR1_5         121C
-CHECKFOR1_6         125A
-CHECKFOR1_7         1298
-CHECKFOR1_8         12D6
-CHECKFOR1_9         1314
+CHECKFOR1_10        13C2
+CHECKFOR1_11        1400
+CHECKFOR1_12        143E
+CHECKFOR1_13        147C
+CHECKFOR1_14        14BA
+CHECKFOR1_15        14F8
+CHECKFOR1_16        1536
+CHECKFOR1_17        1574
+CHECKFOR1_18        15B2
+CHECKFOR1_19        15F0
+CHECKFOR1_2         116C
+CHECKFOR1_20        162E
+CHECKFOR1_21        1676
+CHECKFOR1_4         11EC
+CHECKFOR1_6         12CA
+CHECKFOR1_7         1308
+CHECKFOR1_8         1346
+CHECKFOR1_9         1384
+CHECKFORB_3         118C
+CHECKFORDESTDN_5    1212
+CHECKFORL_3         11B8
+CHECKFORSRCDN_5     125A
+CHECKFORW_3         11A2
 COMPLETE_1          1138
-COMPLETE_10         1366
-COMPLETE_11         13A4
-COMPLETE_12         13E2
-COMPLETE_13         1420
-COMPLETE_14         145E
-COMPLETE_15         149C
-COMPLETE_16         14DA
-COMPLETE_17         1518
-COMPLETE_18         1556
-COMPLETE_19         1594
-COMPLETE_2          1176
-COMPLETE_20         15D2
-COMPLETE_3          11B4
-COMPLETE_4          11F2
-COMPLETE_5          1230
-COMPLETE_6          126E
-COMPLETE_7          12AC
-COMPLETE_8          12EA
-COMPLETE_9          1328
-DECODEADD           11B6
-DECODEAND           12EC
-DECODEASX_M         13E4
-DECODEASX_R         1422
-DECODEBEQ           1460
-DECODEBGE           149E
-DECODEBLT           14DC
-DECODEBRA           1596
-DECODEDIVU          1270
-DECODEJSR           151A
-DECODELEA           12AE
-DECODELSX_M         1368
-DECODELSX_R         13A6
-DECODEMOVE          113A
-DECODEMOVEM         1178
-DECODEMULS          1232
+COMPLETE_10         13D6
+COMPLETE_11         1414
+COMPLETE_12         1452
+COMPLETE_13         1490
+COMPLETE_14         14CE
+COMPLETE_15         150C
+COMPLETE_16         154A
+COMPLETE_17         1588
+COMPLETE_18         15C6
+COMPLETE_19         1604
+COMPLETE_2          1180
+COMPLETE_20         1642
+COMPLETE_21         168A
+COMPLETE_3          11C2
+COMPLETE_4          1200
+COMPLETE_5          12A0
+COMPLETE_6          12DE
+COMPLETE_7          131C
+COMPLETE_8          135A
+COMPLETE_9          1398
+DECODEADD           1202
+DECODEADRMODE       D8D
+DECODEAND           139A
+DECODEASX_M         1492
+DECODEASX_R         14D0
+DECODEBEQ           150E
+DECODEBGE           154C
+DECODEBLT           158A
+DECODEBRA           164E
+DECODEDIVU          131E
+DECODEJSR           15C8
+DECODELEA           135C
+DECODELSX_M         1416
+DECODELSX_R         1454
+DECODEMOVE          1144
+DECODEMOVEM         11C4
+DECODEMULS          12E0
 DECODENOP           10FC
-DECODENOT           132A
-DECODERTS           1558
-DECODESUB           11F4
+DECODENOT           13D8
+DECODERTS           1606
+DECODESUB           12A2
+DESTDNB_5           124C
+DESTDNL_5           1224
+DESTDNW_5           1232
 IDENTIFYOPCODE      1012
 LOOP_1              1106
-LOOP_10             1334
-LOOP_11             1372
-LOOP_12             13B0
-LOOP_13             13EE
-LOOP_14             142C
-LOOP_15             146A
-LOOP_16             14A8
-LOOP_17             14E6
-LOOP_18             1524
-LOOP_19             1562
-LOOP_2              1144
-LOOP_20             15A0
-LOOP_3              1182
-LOOP_4              11C0
-LOOP_5              11FE
-LOOP_6              123C
-LOOP_7              127A
-LOOP_8              12B8
-LOOP_9              12F6
+LOOP_10             13A4
+LOOP_11             13E2
+LOOP_12             1420
+LOOP_13             145E
+LOOP_14             149C
+LOOP_15             14DA
+LOOP_16             1518
+LOOP_17             1556
+LOOP_18             1594
+LOOP_19             15D2
+LOOP_2              114E
+LOOP_20             1610
+LOOP_21             1658
+LOOP_4              11CE
+LOOP_6              12AC
+LOOP_7              12EA
+LOOP_8              1328
+LOOP_9              1366
 MAIN                1000
 NEXT_1              112A
-NEXT_10             1358
-NEXT_11             1396
-NEXT_12             13D4
-NEXT_13             1412
-NEXT_14             1450
-NEXT_15             148E
-NEXT_16             14CC
-NEXT_17             150A
-NEXT_18             1548
-NEXT_19             1586
-NEXT_2              1168
-NEXT_20             15C4
-NEXT_3              11A6
-NEXT_4              11E4
-NEXT_5              1222
-NEXT_6              1260
-NEXT_7              129E
-NEXT_8              12DC
-NEXT_9              131A
-OUTPUTDATA          15D4
-PADD                33
-PAND                88
-PASX_M              CC
-PASX_R              DD
-PBEQ                EE
-PBGE                FF
-PBLT                110
-PBRA                143
-PDIVU               66
-PJSR                121
-PLEA                77
-PLSX_M              AA
-PLSX_R              BB
-PMOVE               11
-PMOVEM              22
-PMULS               55
-PNOP                0
-PNOT                99
-PRTS                132
-PSUB                44
+NEXT_10             13C8
+NEXT_11             1406
+NEXT_12             1444
+NEXT_13             1482
+NEXT_14             14C0
+NEXT_15             14FE
+NEXT_16             153C
+NEXT_17             157A
+NEXT_18             15B8
+NEXT_19             15F6
+NEXT_2              1172
+NEXT_20             1634
+NEXT_21             167C
+NEXT_4              11F2
+NEXT_5              129C
+NEXT_6              12D0
+NEXT_7              130E
+NEXT_8              134C
+NEXT_9              138A
+OADD                F
+OAND                25
+OASX_M              34
+OASX_R              37
+OBEQ                3A
+OBGE                3D
+OBLT                41
+OBRA                4D
+OBSIZE              51
+ODIVU               1C
+OJSR                45
+OLEA                21
+OLSIZE              59
+OLSX_M              2D
+OLSX_R              31
+OMOVE               4
+OMOVEM              9
+OMULS               17
+ONOP                0
+ONOT                29
+ORTS                49
+OSUB                13
+OUTPUTDATA          168C
+OWSIZE              55
+PADD                90
+PAND                E5
+PASX_M              129
+PASX_R              13A
+PBEQ                14B
+PBGE                15C
+PBLT                16D
+PBRA                1A0
+PDIVU               C3
+PJSR                17E
+PLEA                D4
+PLSX_M              107
+PLSX_R              118
+PMOVE               6E
+PMOVEM              7F
+PMULS               B2
+PNOP                5D
+PNOT                F6
+PRINTOPMODE         708
+PRINTSIZE           473
+PRTS                18F
+PSUB                A1
 REGSHIFT            10F0
 SPLIT0              1020
 SPLIT01             102C
@@ -660,4 +852,7 @@ SPLIT10             1098
 SPLIT11             10A4
 SPLIT110            10B0
 SPLIT111            10D4
+SRCDNB_5            128E
+SRCDNL_5            1266
+SRCDNW_5            1274
 VERIFYOPCODE        0
