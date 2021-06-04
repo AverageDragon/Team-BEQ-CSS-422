@@ -96,8 +96,8 @@ oMOVE:  DC.B    'MOVE',0
 oMOVEM: DC.B    'MOVEM',0
 oADD:   DC.B    'ADD',0
 oSUB:   DC.B    'SUB',0
-oMULS:  DC.B    'MULS',0
-oDIVU:  DC.B    'DIVU',0
+oMULS:  DC.B    'MULS.W ',0
+oDIVU:  DC.B    'DIVU.W ',0
 oLEA:   DC.B    'LEA',0
 oAND:   DC.B    'AND',0
 oNOT:   DC.B    'NOT',0
@@ -123,6 +123,8 @@ oPreDec DC.B    '-',0
 oPstInc DC.B    '+',0
 oHash   DC.B    '#',0
 oBlank  DC.B    ' ',0
+oTab  DC.B    '   ',0
+oWelcome DC.B   'Welcome to our 68k DASM!'
 ; ------------------------------------------------------------
 ; "Pattern" Variables
 ; Jonathan
@@ -301,13 +303,13 @@ printSizeLow:  MACRO
 checkForB\@: 
         BTST    #6,  D3      ; Check if contains 0
         BNE     checkForW\@  ; If not go to word size
+        BTST    #7, D3      ; Check if contains 0
+        BNE     checkForL\@ ; If not go to longword size
         LEA     oBSize, A1     
         MOVE.B  #14,D0       ; Print and end macro  
         TRAP    #15
         BRA     complete\@      
 checkForW\@: 
-        BTST    #7, D3      ; Check if contains 0
-        BNE     checkForL\@ ; If not go to longword size
         LEA     oWSize, A1     
         MOVE.B  #14,D0       ; Print and end macro       
         TRAP    #15
@@ -318,7 +320,21 @@ checkForL\@:
         TRAP    #15
 complete\@:  ; Size has been printed
         ENDM
-        
+; ------------------------------------------------------------
+; "printBranch" Helper
+; Gary
+; 
+; Executes after prepare macro on D1 which contains only adressing mode
+; bits. 
+; ------------------------------------------------------------
+printBranch:  MACRO
+        MOVE.W \1, D3
+        CLR     D1
+        ADD.B   D3, D1
+        convertAtoH D1
+        MOVE.B  #3,D0       ; Print and end macro  
+        TRAP    #15
+        ENDM        
         
 ; ------------------------------------------------------------
 ; "printOpMode" Helper
@@ -657,6 +673,12 @@ space:      MACRO
         MOVE.B  #14,D0          
         TRAP    #15
         ENDM
+tab:      MACRO
+        LEA     oTab, A1
+        MOVE.B  #14,D0          
+        TRAP    #15
+        ENDM
+        
 newLine:    MACRO
         LEA     oBlank, A1
         MOVE.B  #13,D0          
@@ -758,6 +780,8 @@ split0110:
 split01100:
         BTST    #$A, D3     ; Check the 6th bit
         BEQ     decodeBRA   ; BRA starts with 011000
+        BTST    #$C, D3     ; Check the 6th bit
+        BNE     outputData  ; MOVEQ
         BRA     decodeBEQ   ; BEQ starts with 011001
         
 split01101:
@@ -885,7 +909,7 @@ decodeADD:
         CMP.B   #$1, D6             ; If 1, <ea> into Dn otherwise Dn into <ea>
         BEQ     decodeAddDestOp
         printComma
-        prepareAdrMode  #$0, (A2)
+        prepareAdrMode  #$1, (A2)
         decodeAdrMode   (A2), D1
         BRA     decodeADDcomp
 decodeAddDestOp:
@@ -912,7 +936,7 @@ decodeSUB:
         CMP.B   #$1, D6             ; If 1, <ea> into Dn otherwise Dn into <ea>
         BEQ     decodeSubDestOp
         printComma
-        prepareAdrMode  #$0, (A2)
+        prepareAdrMode  #$1, (A2)
         decodeAdrMode   (A2), D1
         BRA     decodeSUBcomp
 decodeSubDestOp:
@@ -935,7 +959,6 @@ decodeMULS:
         LEA     oMULS, A1     
         MOVE.B  #14,D0          
         TRAP    #15
-        printSize       (A2)
         prepareAdrMode  #$1, (A2)
         decodeAdrMode   (A2), D1
         printComma
@@ -953,7 +976,6 @@ decodeDIVU:
         LEA     oDIVU, A1     
         MOVE.B  #14,D0          
         TRAP    #15
-        printSize       (A2)
         prepareAdrMode  #$1, (A2)
         decodeAdrMode   (A2), D1
         printComma
@@ -976,11 +998,11 @@ decodeLEA:
         LEA     oBlank, A1     
         MOVE.B  #14,D0          
         TRAP    #15
-        
+        MOVE.W  (A2), D5
         prepareAdrMode  #$1, (A2)
         decodeAdrMode   (A2), D1
         printComma
-        printAnDest     (A2)
+        printAnDest     D5
         RTS                 ; Return from decodeLEA subroutine
 
 
@@ -1154,7 +1176,12 @@ decodeASx_S:
 ; ------------------------------------------------------------
 decodeBEQ:
         verifyOpcode    pBEQ, (A2)
-        ; put code here
+        LEA     oBEQ, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        space
+        printSign
+        printBranch     (A2)
         RTS                 ; Return from decodeBEQ subroutine
 
 
@@ -1166,7 +1193,12 @@ decodeBEQ:
 ; ------------------------------------------------------------
 decodeBGE:
         verifyOpcode    pBGE, (A2)
-        ; put code here
+        LEA     oBGE, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        space
+        printSign
+        printBranch     (A2)
         RTS                 ; Return from decodeBGE subroutine
 
 
@@ -1178,7 +1210,12 @@ decodeBGE:
 ; ------------------------------------------------------------
 decodeBLT:
         verifyOpcode    pBLT, (A2)
-        ; put code here
+        LEA     oBLT, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        space
+        printSign
+        printBranch     (A2)
         RTS                 ; Return from decodeBLT subroutine
 
 
@@ -1228,7 +1265,9 @@ decodeBRA:
         LEA     oBRA, A1     
         MOVE.B  #14,D0          
         TRAP    #15
-        adrOut
+        space
+        printSign
+        printBranch     (A2)
         RTS                 ; Return from decodeBRA subroutine
 
 
@@ -1291,6 +1330,7 @@ outputData:
 ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                             ; End of Code
         END    main         ; last line of source
+
 
 
 
