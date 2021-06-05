@@ -1,5 +1,7 @@
-EASy68K output log file: 6/4/2021 10:14:19 PM
+EASy68K output log file: 6/4/2021 11:28:16 PM
 
+Welcome to our 68k DASM!
+ 
 Enter the starting address (4 digit hex number):
 0100 
 Enter the ending address (4 digit hex number):
@@ -346,31 +348,34 @@ Enter the ending address (4 digit hex number):
 0560   JSR $1234 
 0564   JSR $12345678 
 056A   BLT $066A 
-056C   BLT $056E 
-056E   ASR.L D5, D4 
-0570   BLT $0572 
-0572   =0CC2 6CFE 6C00 
-0578   =0CBC 67FE 6700 0CB6 
+056C   BLT $726E 
+0570   BLT $7272 
+0574   BGE $0674 
+0576   BGE $7178 
+057A   BEQ $067A 
+057C   BEQ $6C7E 
 0580   BRA $0680 
-0582   BRA $0584 
-0584   LSR.L #5, D6 
-0586   BRA $0588 
-0588   =0CAC 4893 FC2F 
-058E   MOVEM 
+0582   BRA $6584 
+0586   BRA $6588 
+058A   =4893 
+058C   =FC2F 
+058E   =48A3 
 0590   =F43F 
-0592   MOVEM 
+0592   =48B8 
 0594   =FC2F 
 0596   MOVE.B D4, D1 
-0598   MOVEM 
+0598   =48B9 
 059A   =FC2F 
 059C   MOVE.B D4, D1 
-059E   NOT.W $4C93 
+059E   =5678 
+05A0   =4C93 
 05A2   =0010 4C9B 
 05A6   =0010 4CB8 
 05AA   =0010 1234 
-05AE   MOVEM 
+05AE   =4CB9 
 05B0   =0010 1234 
-05B4   NOT.W $FFFF 
+05B4   =5678 
+05B6   =FFFF 
 05B8   =FFFF 
 05BA   =FFFF 
 05BC   =FFFF 

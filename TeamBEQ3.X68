@@ -17,8 +17,9 @@
 * D7 used for size marker and error validation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
 *
 * A1 used loading strings (for output and validation)
-* A2 used for storing opcode currently being evaluated                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
-* NOT USED:   A0, A3 - A7 
+* A2 used for storing opcode currently being evaluated 
+* A3 used for temporary storage when needed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+* NOT USED:   A0, A4 - A7 
 *-----------------------------------------------------------
 
 ; ========================================================================
@@ -49,9 +50,7 @@ done\@: NOP
 ; "printMoveMBits" Helper
 ; Dylan
 ;
-; 1st argument is a data register containing an ASCII character
-;
-; Converts the argument from an ASCII character to hex
+; First version which operates through a loop going through each bit
 ; ------------------------------------------------------------
 printMoveMBits:    MACRO
     * load memory into register
@@ -62,7 +61,7 @@ printMoveMBits:    MACRO
     CLR.L   D2
     CLR.L   D3
 
-    MOVE.W  TEMPADDRESSCHANGETHIS, D2
+    MOVE.W  \1, D2
     
     * check the last bit
 rptShift\@:
@@ -86,8 +85,8 @@ rptShift\@:
     * bit was one, print the register
 bitOne\@:
     CMPI.W  #8, D1
-    BLT     printData
-    BSR     printAddr
+    BLT     printData\@
+    BSR     printAddr\@
 
     RTS
 
@@ -111,9 +110,9 @@ done\@: NOP
 ; "readInput" Helper
 ; Jonathan
 ;
-; 1st argument is a data register containing an ASCII character
+; 1st argument is data register where input is stored
 ;
-; Converts the argument from an ASCII character to hex
+; Reads input and converts ascii to hex.
 ; ------------------------------------------------------------
 readInput:    MACRO
         ; Read user's input
@@ -184,8 +183,9 @@ oPreDec DC.B    '-',0
 oPstInc DC.B    '+',0
 oHash   DC.B    '#',0
 oBlank  DC.B    ' ',0
-oTab  DC.B    '   ',0
-oWelcome DC.B   'Welcome to our 68k DASM!'
+oTab    DC.B    '   ',0
+oSLash  DC.B    '\',0
+oWelcome DC.B   'Welcome to our 68k DASM!',0
 ; ------------------------------------------------------------
 ; "Pattern" Variables
 ; Jonathan
@@ -240,7 +240,7 @@ done\@: NOP
 ; adrOut
 ; Gary
 ;
-; Converts the hex in A2 to ASCII and outputs it, then increments A2.
+; Outputs the adress currently in A2 in hex form.
 ; ------------------------------------------------------------
 adrOut:         MACRO
         MOVE.B  #6, D0      ; Prepare TRAP 15 for outputting a character in D1
@@ -270,32 +270,39 @@ adrOut:         MACRO
         LSR.W   #8, D1      ; Get the first hex digit of D1
         LSR.W   #4, D1      
         ConvertHtoA D1      ; Convert D1 to a character
-        TRAP    #15         ; Execute output       
-        ENDM 
+        TRAP    #15         ; Execute output   
+        ENDM     
+; ------------------------------------------------------------
+; adrOutInput
+; Gary
+;
+; Outputs the given argument register currently in A2 in hex form.
+; ------------------------------------------------------------      
+        
 adrOutInput:         MACRO
-        MOVE.L   \1, D7
+        MOVE.L   \1, D7     
         MOVE.B  #6, D0      ; Prepare TRAP 15 for outputting a character in D1
-        MOVE.W  D7, D1    ; Move A2 into D1
+        MOVE.W  D7, D1    
         LSR.W   #8, D1      ; Get the first hex digit of D1
         LSR.W   #4, D1      
         ConvertHtoA D1      ; Convert D1 to a character
         TRAP    #15         ; Execute output
         
-        MOVE.W  D7, D1    ; Move A2 into D1    ; Move A2 into D1
+        MOVE.W  D7, D1    
         LSL.W   #4, D1      ; Remove the first 4 bits (1 digit) of D1
         LSR.W   #8, D1      ; Get the first hex digit of D1
         LSR.W   #4, D1      
         ConvertHtoA D1      ; Convert D1 to a character
         TRAP    #15         ; Execute output
         
-        MOVE.W  D7, D1    ; Move A2 into D1   ; Move A2 into D1
+        MOVE.W  D7, D1    
         LSL.W   #8, D1      ; Remove the first 8 bits (2 digits) of D1
         LSR.W   #8, D1      ; Get the first hex digit of D1
         LSR.W   #4, D1      
         ConvertHtoA D1      ; Convert D1 to a character
         TRAP    #15         ; Execute output
         
-        MOVE.W  D7, D1    ; Move A2 into D1    ; Move A2 into D1
+        MOVE.W  D7, D1    
         LSL.W   #8, D1      ; Remove the first 8 bits (2 digits) of D1
         LSL.W   #4, D1      ; Remove the first 4 bits (1 more digit) of D1
         LSR.W   #8, D1      ; Get the first hex digit of D1
@@ -348,7 +355,7 @@ complete\@:  ; Opcode has been verified
 ; "printSize" Helper
 ; Gary
 ;
-; 1st argument is the data register with opcode whose size is being decoded
+; 1st argument is the data register with opcode whose size is being decoded.
 ;
 ; Used in opcodes whose size bits are #13 and #12 (e.g. MOVE). It does so
 ; by sequentally checking both bits. Bit #13 differentiates byte and word size.
@@ -424,7 +431,8 @@ complete\@:  ; Size has been printed
 ; Used in opcodes whose size bits are #6 and #7 (e.g. ADD). It does so
 ; by sequentally checking both bits. Bit #6 differentiates byte and word size.
 ; If bit goes to word, bit #7 is checked to differntiate word and long word.
-; Once matched, size is printed and appended to already printed opcode, macro exits.
+; Different from printSize because it does not print. Instead it preapres
+; D6 to be used for size validation in decode methods.
 ; ------------------------------------------------------------
 decodeSizeLow:  MACRO
         MOVE.W  \1, D3      ; input value   
@@ -441,16 +449,16 @@ complete\@:  ; Size has been checeked
 ; "decodeDisplacement" Helper
 ; Gary
 ; 
-; Executes after prepare macro on D1 which contains only adressing mode
-; bits. 
+; Decodes branching displacement by checking last byte then
+; scanning the appropriate amount of subsequent words.
 ; ------------------------------------------------------------
 decodeDisplacement:  MACRO
-        MOVE.W \1, D3
+        MOVE.W \1, D3           
         CLR     D1
         MOVE.W  A2, D7
-        CMP.B   $00, D3
+        CMP.B   #$0, D3
         BEQ     Sbit\@
-        CMP.B   $FF, D3
+        CMP.B   #$FF, D3
         BEQ     Tbit\@
 Ebit\@:   
         LSL     #08, D3
@@ -582,7 +590,8 @@ complete\@:  ; Opcode has been verified
 ; Gary
 ; 
 ; Executes after prepare macro on D1 which contains only adressing mode
-; bits. 
+; bits. It sorts by comparing D1 register to value to unique added up
+; bits which represent adresssing mode form.
 ; ------------------------------------------------------------
 decodeAdrMode:  MACRO
         MOVE.W  \1, D3      ; holds full opcode
@@ -716,7 +725,12 @@ AdrAbsoluteL\@:
 
 complete\@:  ; Opcode has been verified
         ENDM
-
+; ------------------------------------------------------------
+; "printCount" Helper
+; Gary
+; 
+; Prints bits 9 to 11 with a hash in front.
+; ------------------------------------------------------------
 printCount:     MACRO
         MOVE.W  \1, D1      ; bits 9 to 11
         LSL     #$04, D1
@@ -728,7 +742,12 @@ printCount:     MACRO
         MOVE.B  #3,D0          
         TRAP    #15
         ENDM
-
+; ------------------------------------------------------------
+; "printDnDest" Helper
+; Gary
+; 
+; Prints bits 9 to 11 which represent data register destination.
+; ------------------------------------------------------------
 printDnDest:    MACRO 
         MOVE.W  \1, D1      ; bits 9 to 11
         LSL     #$04, D1
@@ -740,6 +759,12 @@ printDnDest:    MACRO
         MOVE.B  #3,D0          
         TRAP    #15
         ENDM
+; ------------------------------------------------------------
+; "printDnSrc" Helper
+; Gary
+; 
+; Prints bits 0 to 2 which represent data register source.
+; ------------------------------------------------------------
 printDnSrc:    MACRO   
         CLR.L   D1
         MOVE.W  \1, D1   ; bits 0 to 2
@@ -753,9 +778,15 @@ printDnSrc:    MACRO
         MOVE.B  #3,D0          
         TRAP    #15
         ENDM
+; ------------------------------------------------------------
+; "printAnDest" Helper
+; Gary
+; 
+; Prints bits 9 to 11 which represent adress register destination.
+; ------------------------------------------------------------
 printAnDest:    MACRO
         MOVE.W  \1, D1
-        LSL     #$04, D1
+        LSL     #$04, D1 ; bits 9 to 11
         LSR     #$08, D1
         LSR     #$05, D1
         LEA     oAn, A1     
@@ -764,6 +795,12 @@ printAnDest:    MACRO
         MOVE.B  #3,D0          
         TRAP    #15
         ENDM
+; ------------------------------------------------------------
+; "printAnSrc" Helper
+; Gary
+; 
+; Prints bits 0 to 2 which represent adress register source.
+; ------------------------------------------------------------
 printAnSrc:    MACRO   
         MOVE.W  \1, D1   ; bits 0 to 2
         LSL     #$08, D1
@@ -776,6 +813,12 @@ printAnSrc:    MACRO
         MOVE.B  #3,D0          
         TRAP    #15
         ENDM
+; ------------------------------------------------------------
+; "printAdr" Helper
+; Gary
+; 
+; Unused old version of ADROUT.
+; ------------------------------------------------------------        
 printAdr:      MACRO
         MOVE.W  A2, D1    ; Move A2 into D1
         LSR.W   #8, D1      ; Get the first hex digit of D1
@@ -862,16 +905,28 @@ newLine:    MACRO
         MOVE.B  #13,D0          
         TRAP    #15
         ENDM
+
+slash:      MACRO
+        LEA     oSlash, A1
+        MOVE.B  #13,D0          
+        TRAP    #15
+        ENDM
 ; +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ; "main" routine
-; Dylan, Gary
+; Dylan, Gary, Jonathan
 ; 
-; TODO: DESCRIPTION OF MAIN ROUTINE FUNCTIONALITY
+; Iterates through memory word-by-word using post increment mode after
+; requesting user input.
 ; ========================================================================
         ORG     $1000
         OPT     MEX
         
-main:   LEA     rSTART, A1  ; Request starting address
+main:   LEA     oWelcome, A1  ; Welcome Message
+        MOVE.B  #13, D0
+        TRAP    #15
+        newline
+        
+        LEA     rSTART, A1  ; Request starting address
         MOVE.B  #13, D0
         TRAP    #15
         readInput   D2      ; Read 4 digit hex input
@@ -1051,9 +1106,14 @@ decodeNOP:
 ; ------------------------------------------------------------
 decodeMOVE:
         verifyOpcode    pMOVE, (A2)
+        
+        BTST    #$E, (A2)       ; Second verification step
+        BNE     decodeMOVEM
+
         LEA     oMOVE, A1     
         MOVE.B  #14,D0          
         TRAP    #15
+        
         printSize       (A2)
         prepareAdrMode  #$1, (A2)
         decodeAdrMode   (A2), D1
@@ -1067,13 +1127,12 @@ decodeMOVE:
 ; 3. "decodeMOVEM" subroutine
 ; Dylan
 ;
-; TODO: DESCRIPTION
+; Decode MOVEM by scanning register list masks. Currently not 
+; properly formatted so instead it just prints memory at location.
 ; ------------------------------------------------------------
 decodeMOVEM:
         verifyOpcode    pMOVEM, (A2)
-        LEA     oMOVEM, A1     
-        MOVE.B  #14,D0          
-        TRAP    #15
+        JSR     outputData
         RTS                 ; Return from decodeMOVEM subroutine
 
 
@@ -1232,9 +1291,15 @@ decodeANDcomp:
 ; ------------------------------------------------------------
 decodeNOT:
         verifyOpcode    pNOT, (A2)
+        BTST    #$B, (A2)
+        BNE     decodeMOVEM
+        BTST    #$C, (A2)
+        BNE     decodeMOVEM ;Second verification step
+        
         LEA     oNOT, A1     
         MOVE.B  #14,D0          
         TRAP    #15
+        
         printSizeLow       (A2)
         prepareAdrMode  #$1, (A2)
         decodeAdrMode   (A2), D1
