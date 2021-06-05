@@ -45,7 +45,67 @@ convertAtoH:    MACRO
 alpha\@: SUBI.B #$37, \1    ; Subtract 37 to convert A-F char to hex
 done\@: NOP
         ENDM
+; ------------------------------------------------------------
+; "printMoveMBits" Helper
+; Dylan
+;
+; 1st argument is a data register containing an ASCII character
+;
+; Converts the argument from an ASCII character to hex
+; ------------------------------------------------------------
+printMoveMBits:    MACRO
+    * load memory into register
+    * D1 is loop counter
+    * D2 is shift register
+    * D3 is AND register
+    CLR.L   D1
+    CLR.L   D2
+    CLR.L   D3
 
+    MOVE.W  TEMPADDRESSCHANGETHIS, D2
+    
+    * check the last bit
+rptShift\@:
+    * copy shifted bits into AND register
+    MOVE.W  D2, D3
+    * and the bits with 1 to get the last bit
+    ANDI.W  #1, D3
+    * compare with 1
+    CMPI.W  #1, D3
+    BEQ     bitOne\@
+
+    * left shift
+    LSL.W   #1, D2
+    ADD.W   #1, D1
+
+    * check if done and repeat
+    CMPI.W  #16, D1
+    BLT     rptShift\@
+    BGE        done\@
+
+    * bit was one, print the register
+bitOne\@:
+    CMPI.W  #8, D1
+    BLT     printData
+    BSR     printAddr
+
+    RTS
+
+    * print the register with number
+printData\@:
+    * unfinished
+    prepareAdrMode  #$1, (A2)
+    decodeAdrMode   (A2), D1
+    printComma
+    RTS
+
+    * print register (subtract 8 from the counter)
+printAddr\@:
+
+    RTS
+
+done\@: NOP
+        ENDM
 
 ; ------------------------------------------------------------
 ; "readInput" Helper
@@ -183,6 +243,7 @@ done\@: NOP
 ; Converts the hex in A2 to ASCII and outputs it, then increments A2.
 ; ------------------------------------------------------------
 adrOut:         MACRO
+        MOVE.B  #6, D0      ; Prepare TRAP 15 for outputting a character in D1
         MOVE.W  (A2), D1    ; Move A2 into D1
         LSR.W   #8, D1      ; Get the first hex digit of D1
         LSR.W   #4, D1      
@@ -204,6 +265,37 @@ adrOut:         MACRO
         TRAP    #15         ; Execute output
         
         MOVE.W  (A2), D1    ; Move A2 into D1
+        LSL.W   #8, D1      ; Remove the first 8 bits (2 digits) of D1
+        LSL.W   #4, D1      ; Remove the first 4 bits (1 more digit) of D1
+        LSR.W   #8, D1      ; Get the first hex digit of D1
+        LSR.W   #4, D1      
+        ConvertHtoA D1      ; Convert D1 to a character
+        TRAP    #15         ; Execute output       
+        ENDM 
+adrOutInput:         MACRO
+        MOVE.L   \1, D7
+        MOVE.B  #6, D0      ; Prepare TRAP 15 for outputting a character in D1
+        MOVE.W  D7, D1    ; Move A2 into D1
+        LSR.W   #8, D1      ; Get the first hex digit of D1
+        LSR.W   #4, D1      
+        ConvertHtoA D1      ; Convert D1 to a character
+        TRAP    #15         ; Execute output
+        
+        MOVE.W  D7, D1    ; Move A2 into D1    ; Move A2 into D1
+        LSL.W   #4, D1      ; Remove the first 4 bits (1 digit) of D1
+        LSR.W   #8, D1      ; Get the first hex digit of D1
+        LSR.W   #4, D1      
+        ConvertHtoA D1      ; Convert D1 to a character
+        TRAP    #15         ; Execute output
+        
+        MOVE.W  D7, D1    ; Move A2 into D1   ; Move A2 into D1
+        LSL.W   #8, D1      ; Remove the first 8 bits (2 digits) of D1
+        LSR.W   #8, D1      ; Get the first hex digit of D1
+        LSR.W   #4, D1      
+        ConvertHtoA D1      ; Convert D1 to a character
+        TRAP    #15         ; Execute output
+        
+        MOVE.W  D7, D1    ; Move A2 into D1    ; Move A2 into D1
         LSL.W   #8, D1      ; Remove the first 8 bits (2 digits) of D1
         LSL.W   #4, D1      ; Remove the first 4 bits (1 more digit) of D1
         LSR.W   #8, D1      ; Get the first hex digit of D1
@@ -336,32 +428,56 @@ complete\@:  ; Size has been printed
 ; ------------------------------------------------------------
 decodeSizeLow:  MACRO
         MOVE.W  \1, D3      ; input value   
-        CLR     D7   
+        CLR     D6   
 checkForBorW\@: 
         BTST    #7, D3      ; Check if contains 0
         BNE     checkForL\@ ; If not go to longword size         
         BRA     complete\@  
 checkForL\@:
-        MOVE.B  #$1, D7
+        MOVE.B  #$1, D6
 complete\@:  ; Size has been checeked
-        ENDM
-             
-; ------------------------------------------------------------
-; "printBranch" Helper
+        ENDM 
+ ; ------------------------------------------------------------
+; "decodeDisplacement" Helper
 ; Gary
 ; 
 ; Executes after prepare macro on D1 which contains only adressing mode
 ; bits. 
 ; ------------------------------------------------------------
-printBranch:  MACRO
+decodeDisplacement:  MACRO
         MOVE.W \1, D3
         CLR     D1
-        ADD.B   D3, D1
-        convertAtoH D1
-        MOVE.B  #3,D0       ; Print and end macro  
-        TRAP    #15
+        MOVE.W  A2, D7
+        CMP.B   $00, D3
+        BEQ     Sbit\@
+        CMP.B   $FF, D3
+        BEQ     Tbit\@
+Ebit\@:   
+        LSL     #08, D3
+        LSR     #08, D3
+        EXT.L   D3
+        ADD.L   D3, D7
+        ADD.L   #2, D7
+        adrOutInput D7     
+        BRA     decodeDisplacement\@
+Sbit\@:  
+        MOVE.W  (A2)+, D3  ; Increment A2 (D4 isn't relevant)
+        EXT.L    D3
+        ADD.L   D3, D7
+        ADD.L   #2, D7
+        adrOutInput D7
+        BRA     decodeDisplacement\@
+Tbit\@:  
+        MOVE.W  (A2)+, D3  ; Increment A2 (D4 isn't relevant)
+        EXT.L   D3
+        SWAP    D3
+        MOVE.W  (A2)+, D3   ; Increment A2 (D4 isn't relevant)
+        ADD.L   D3, D7
+        ADD.L   #2, D7
+        adrOutInput D7
+decodeDisplacement\@:
         ENDM        
-        
+               
 ; ------------------------------------------------------------
 ; "printOpMode" Helper
 ; Gary
@@ -814,7 +930,7 @@ split000:
         BNE     decodeMOVE
         BTST    #$C, D3     ; Check the 3rd bit
         BNE     decodeMOVE
-        BRA     outputData
+        BRA     decodeImmediate
 split01:
         BTST    #$D, D3     ; Check the 3rd bit
         BEQ     split0100   ; Code is 010, but all subcodes are 0100
@@ -877,11 +993,11 @@ split110:
         BEQ     decodeAND
         BTST    #$6, D3
         BEQ     decodeAND
-        BRA     decodULS  ; All 3 positions (8, 9, 10) were set
+        BRA     decodeMULS  ; All 3 positions (8, 9, 10) were set
 
 split111: 
         BTST    #$3, D3     ; Check 13th bit
-        BEQ     ariShift ; ASL_ASR Memory Shift follows 1110000x11+
+        BEQ     ariShift    ; ASL_ASR Memory Shift follows 1110000x11+
    
         BTST    #$5, D3     
         BNE     logReg     
@@ -890,7 +1006,7 @@ logReg: BTST    #12, D3
         BEQ     decodeLSx_R
         BRA     outputData
 
-ariShift: ; Special split specifically for Arithmetic Shift
+ariShift:                   ; Special split specifically for Arithmetic Shift
         BTST    #$5, D3     
         BNE     ariReg
         BRA     decodeASx_M    
@@ -899,7 +1015,7 @@ ariReg: BRA     decodeASx_R
 
 ; ========================================================================
 ; "decodeX" subroutines
-; Gary, Dylan
+; Gary
 ; 
 ; Set of subroutines which are invoked by identifyOpcode.
 ; A decodeX subroutine will read from A2 and use TRAP #15 to output
@@ -914,9 +1030,9 @@ ariReg: BRA     decodeASx_R
 
 ; ------------------------------------------------------------
 ; 1. "decodeNOP" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION
+; Decodes NOP opcode by verifying then printing
 ; ------------------------------------------------------------
 decodeNOP:
         verifyOpcode    pNOP, (A2)
@@ -928,9 +1044,10 @@ decodeNOP:
 
 ; ------------------------------------------------------------
 ; 2. "decodeMOVE" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION
+; Decodes MOVE opcode by verifying, checking size and adressing mode
+; then printing both.
 ; ------------------------------------------------------------
 decodeMOVE:
         verifyOpcode    pMOVE, (A2)
@@ -948,21 +1065,24 @@ decodeMOVE:
 
 ; ------------------------------------------------------------
 ; 3. "decodeMOVEM" subroutine
-; AUTHOR
+; Dylan
 ;
 ; TODO: DESCRIPTION
 ; ------------------------------------------------------------
 decodeMOVEM:
         verifyOpcode    pMOVEM, (A2)
-        ; put code here
+        LEA     oMOVEM, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
         RTS                 ; Return from decodeMOVEM subroutine
 
 
 ; ------------------------------------------------------------
 ; 4. "decodeADD" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION
+; Decodes add by verifying, printing, checking the opmode(and size),
+; and decoding the adressing modes used.
 ; ------------------------------------------------------------
 decodeADD:
         verifyOpcode    pADD, (A2)
@@ -987,9 +1107,10 @@ decodeADDcomp:
 
 ; ------------------------------------------------------------
 ; 5. "decodeSUB" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION
+; Decodes sub by verifying, printing, checking the opmode(and size),
+; and decoding the adressing modes used.
 ; ------------------------------------------------------------
 decodeSUB:
         verifyOpcode    pSUB, (A2)
@@ -1014,9 +1135,10 @@ decodeSUBcomp:
 
 ; ------------------------------------------------------------
 ; 6. "decodeMULS" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION MULS
+; Decodes muls by verifying, printing, then checking adressing
+; modes and printing them in a formatted form.
 ; ------------------------------------------------------------
 decodeMULS:
         verifyOpcode    pMULS, (A2)
@@ -1032,9 +1154,10 @@ decodeMULS:
         
 ; ------------------------------------------------------------
 ; 7. "decodeDIVU" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION DIVU
+; Decodes divu by verifying, printing, then checking adressing
+; modes and printing them in a formatted form.
 ; ------------------------------------------------------------
 decodeDIVU:
         verifyOpcode    pDIVU, (A2)
@@ -1051,9 +1174,10 @@ decodeDIVU:
 
 ; ------------------------------------------------------------
 ; 8. "decodeLEA" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION
+; Decodes lea by verifying, printing in a formatted form,
+; then decoding adressing modes and outputing them in formatted form.
 ; ------------------------------------------------------------
 decodeLEA:
         verifyOpcode    pLEA, (A2)
@@ -1073,9 +1197,10 @@ decodeLEA:
 
 ; ------------------------------------------------------------
 ; 9. "decodeAND" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION
+; Decodes and by verifying, printing in a formatted form,
+; then decoding adressing modes and outputing them in formatted form.
 ; ------------------------------------------------------------
 decodeAND:
         verifyOpcode    pAND, (A2)
@@ -1100,9 +1225,10 @@ decodeANDcomp:
 
 ; ------------------------------------------------------------
 ; 10. "decodeNOT" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION
+; Decodes not by verifying, printing in a formatted form,
+; then decoding adressing modes and outputing them in formatted form.
 ; ------------------------------------------------------------
 decodeNOT:
         verifyOpcode    pNOT, (A2)
@@ -1116,9 +1242,10 @@ decodeNOT:
 
 ; ------------------------------------------------------------
 ; 11a. "decodeLSx_M" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION - LSL or LSR Memory Shift
+; Decodes Logical Shifts by checking if its memory or registers
+; it receives then prints. 
 ; ------------------------------------------------------------
 decodeLSx_M:
         verifyOpcode    pLSx_M, (A2)
@@ -1141,9 +1268,10 @@ reg_M:  printSizeLow       (A2)
 
 ; ------------------------------------------------------------
 ; 11b. "decodeLSx_R" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION - LSL or LSR Register Shift
+; Decodes Logical Shifts by checking if its memory or registers
+; it receives then prints. 
 ; ------------------------------------------------------------
 decodeLSx_R:
         verifyOpcode    pLSx_R, (A2)
@@ -1162,22 +1290,13 @@ reg_R:  printSizeLow       (A2)
         printComma
         printDnSrc     (A2)
         RTS                 ; Return from ddecodeLSx_R subroutine
-
-; ------------------------------------------------------------
-; 11c. "decodeLSx_S" subroutine
-; AUTHOR
-;
-; TODO: DESCRIPTION - LSL or LSR Register Shift
-; ------------------------------------------------------------
-decodeLSx_S:
-        verifyOpcode    pLSx_S, (A2)
-        RTS                 ; Return from ddecodeLSx_S subroutine
         
 ; ------------------------------------------------------------
 ; 12a. "decodeASx_M" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION - ASL or ASR Memory Shift
+; Decodes Arithmetical Shifts by checking if its memory or registers
+; it receives then prints. 
 ; ------------------------------------------------------------
 decodeASx_M:
         verifyOpcode    pASx_M, (A2)
@@ -1200,9 +1319,10 @@ Areg_M: printSizeLow       (A2)
 
 ; ------------------------------------------------------------
 ; 12b. "decodeASx_R" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION - ASL or ASR Register Shift
+; Decodes Arithmetical Shifts by checking if its memory or registers
+; it receives then prints. 
 ; ------------------------------------------------------------
 decodeASx_R:
         verifyOpcode    pASx_R, (A2)
@@ -1223,21 +1343,13 @@ Areg_R: printSizeLow       (A2)
         RTS                 ; Return from decodeASx_R subroutine
         
         ; ------------------------------------------------------------
-; 12c. "decodeASx_S" subroutine
-; AUTHOR
-;
-; TODO: DESCRIPTION - ASL or ASR Register Shift
-; ------------------------------------------------------------
-decodeASx_S:
-        verifyOpcode    pASx_S, (A2)
-        RTS                 ; Return from decodeASx_S subroutine
 
 
 ; ------------------------------------------------------------
 ; 13a. "decodeBEQ" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION
+; Decodes Branching by verifying then decoding displacement.
 ; ------------------------------------------------------------
 decodeBEQ:
         verifyOpcode    pBEQ, (A2)
@@ -1246,15 +1358,15 @@ decodeBEQ:
         TRAP    #15
         space
         printSign
-        printBranch     (A2)
+        decodeDisplacement (A2)
         RTS                 ; Return from decodeBEQ subroutine
 
 
 ; ------------------------------------------------------------
 ; 13b. "decodeBGE" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION
+; Decodes Branching by verifying then decoding displacement.
 ; ------------------------------------------------------------
 decodeBGE:
         verifyOpcode    pBGE, (A2)
@@ -1263,15 +1375,16 @@ decodeBGE:
         TRAP    #15
         space
         printSign
-        printBranch     (A2)
+        decodeDisplacement (A2)
+
         RTS                 ; Return from decodeBGE subroutine
 
 
 ; ------------------------------------------------------------
 ; 13c. "decodeBLT" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION
+; Decodes Branching by verifying then decoding displacement.
 ; ------------------------------------------------------------
 decodeBLT:
         verifyOpcode    pBLT, (A2)
@@ -1280,15 +1393,16 @@ decodeBLT:
         TRAP    #15
         space
         printSign
-        printBranch     (A2)
+        decodeDisplacement (A2)
+
         RTS                 ; Return from decodeBLT subroutine
 
 
 ; ------------------------------------------------------------
 ; 14. "decodeJSR" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION
+; Decodes Branching by verifying then decoding displacement.
 ; ------------------------------------------------------------
 decodeJSR:
         verifyOpcode    pJSR, (A2)
@@ -1307,9 +1421,9 @@ decodeJSR:
 
 ; ------------------------------------------------------------
 ; 15. "decodeRTS" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION
+; Decodes RTS by verifying then printing
 ; ------------------------------------------------------------
 decodeRTS:
         verifyOpcode    pRTS, (A2)
@@ -1321,9 +1435,9 @@ decodeRTS:
 
 ; ------------------------------------------------------------
 ; 16. "decodeBRA" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION
+; Decodes Branching by verifying then decoding displacement.
 ; ------------------------------------------------------------
 decodeBRA:
         verifyOpcode    pBRA, (A2)
@@ -1332,39 +1446,64 @@ decodeBRA:
         TRAP    #15
         space
         printSign
-        printBranch     (A2)
+        decodeDisplacement (A2)
         RTS                 ; Return from decodeBRA subroutine
         
 ; ------------------------------------------------------------
 ; 17. "decodeImmediate" subroutine
-; AUTHOR
+; Gary
 ;
-; TODO: DESCRIPTION
+; Decodes cases where an immediate mode is encountered.
+; Does so by calculating how many words it needs to scan before
+; moving on. This is calculated through the adressing mode and the
+; opcode size.
 ; ------------------------------------------------------------
 decodeImmediate:
-        LEA     oADDI, A1     
-        MOVE.B  #14,D0          
-        TRAP    #15
         JSR     outputData
-        decodeSizeLow   (A2)
-        CMP.B   #1, D7
-        BEQ     decodeImmediateLong
-        printAdr
-        tab
-        MOVE.W  (A2)+, D4   ; Increment A2 (D1 isn't relevant)
+        CLR     D1
+        CLR     D6
+        MOVEA   A2, A3
+        MOVE.W  (A2)+, D4   ; Increment A2 (D4 isn't relevant)
+        prepareAdrMode  #$1,(A3)  
+        decodeSizeLow   (A3)
+        MOVE.B  D1, D7
+        CMP.B   #1, D6
+        BEQ     decodeImmediateL
+        space
+        adrOut
+        
+        CMP.B   #$07, D7
+        BEQ     decodeImmediateDest
+        
+        BRA     decodeImmediateComp
+decodeImmediateL:
+        space
+        adrOut
+        space
+        MOVE.W  (A2)+, D4   ; Increment A2 (D4 isn't relevant)
+        adrOut
+        
+        CMP.B   #$07, D7
+        BEQ     decodeImmediateDest
 
         BRA     decodeImmediateComp
-decodeImmediateLong:
-        printAdr
-        tab
+decodeImmediateDest:
+        MOVE.W  (A3), D7
+        MOVE.W  (A2)+, D4   ; Increment A2 (D4 isn't relevant)
+        BTST    #0, D7
+        BNE     decodeImmediateDestL
+decodeImmediateDestW:        
+        space
+        adrOut 
+        BRA     decodeImmediateComp
+decodeImmediateDestL:
+        space
+        adrOut
         MOVE.W  (A2)+, D4   ; Increment A2 (D1 isn't relevant)
-        
-        printAdr
-        MOVE.W  (A2)+, D4   ; Increment A2 (D1 isn't relevant)
+        adrOut
         
 decodeImmediateComp:
         RTS                 ; Return from decodeDIVU subroutine
-
 
 ; ========================================================================
 ; Generic Helper Functions
