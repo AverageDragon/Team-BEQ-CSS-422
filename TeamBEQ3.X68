@@ -95,6 +95,7 @@ oNOP:   DC.B    'NOP',0
 oMOVE:  DC.B    'MOVE',0
 oMOVEM: DC.B    'MOVEM',0
 oADD:   DC.B    'ADD',0
+oADDI:  DC.B    'ADDI',0
 oSUB:   DC.B    'SUB',0
 oMULS:  DC.B    'MULS.W ',0
 oDIVU:  DC.B    'DIVU.W ',0
@@ -287,7 +288,7 @@ checkForL\@:
 complete\@:  ; Size has been printed
         ENDM
         
-        ; ------------------------------------------------------------
+; ------------------------------------------------------------
 ; "printSizeLow" Helper
 ; Gary
 ;
@@ -299,7 +300,8 @@ complete\@:  ; Size has been printed
 ; Once matched, size is printed and appended to already printed opcode, macro exits.
 ; ------------------------------------------------------------
 printSizeLow:  MACRO
-        MOVE.W  \1, D3      ; input value      
+        MOVE.W  \1, D3      ; input value   
+        CLR     D7   
 checkForB\@: 
         BTST    #6,  D3      ; Check if contains 0
         BNE     checkForW\@  ; If not go to word size
@@ -315,11 +317,35 @@ checkForW\@:
         TRAP    #15
         BRA     complete\@  
 checkForL\@:
+        MOVE.B  #$1, D7
         LEA     oLSize, A1   ; If both bits are #1, size is longword and macro ends.  
         MOVE.B  #14,D0       ; Print and end macro  
         TRAP    #15
 complete\@:  ; Size has been printed
         ENDM
+; ------------------------------------------------------------
+; "decodeSizeLow" Helper
+; Gary
+;
+; 1st argument is the data register with opcode whose size is being decoded
+;
+; Used in opcodes whose size bits are #6 and #7 (e.g. ADD). It does so
+; by sequentally checking both bits. Bit #6 differentiates byte and word size.
+; If bit goes to word, bit #7 is checked to differntiate word and long word.
+; Once matched, size is printed and appended to already printed opcode, macro exits.
+; ------------------------------------------------------------
+decodeSizeLow:  MACRO
+        MOVE.W  \1, D3      ; input value   
+        CLR     D7   
+checkForBorW\@: 
+        BTST    #7, D3      ; Check if contains 0
+        BNE     checkForL\@ ; If not go to longword size         
+        BRA     complete\@  
+checkForL\@:
+        MOVE.B  #$1, D7
+complete\@:  ; Size has been checeked
+        ENDM
+             
 ; ------------------------------------------------------------
 ; "printBranch" Helper
 ; Gary
@@ -351,6 +377,7 @@ printOpMode:  MACRO
         MOVE.W  \1, D3      
         MOVE.B  #8, D1    
         CLR     D6
+        CLR     D7
 checkForDestDn\@: 
         BTST    D1, D3      
         BNE     checkForSrcDn\@
@@ -362,6 +389,7 @@ DestDnL\@:
         LEA     oLSize, A1     
         MOVE.B  #14,D0          
         TRAP    #15
+        MOVE.B  #$1, D7
         BRA     complete\@ 
 DestDnW\@: 
         JSR     next\@
@@ -384,6 +412,7 @@ SrcDnL\@:
         LEA     oLSize, A1     
         MOVE.B  #14,D0          
         TRAP    #15
+        MOVE.B  #$1, D7
         printDnDest D3
         BRA     complete\@ 
 SrcDnW\@:
@@ -631,6 +660,39 @@ printAnSrc:    MACRO
         MOVE.B  #3,D0          
         TRAP    #15
         ENDM
+printAdr:      MACRO
+        MOVE.W  A2, D1    ; Move A2 into D1
+        LSR.W   #8, D1      ; Get the first hex digit of D1
+        LSR.W   #4, D1      
+        ConvertHtoA D1      ; Convert D1 to a character
+        MOVE.B  #6, D0      ; Read first digit
+        TRAP    #15         ; Execute output
+        
+        MOVE.W  A2, D1    ; Move A2 into D1
+        LSL.W   #4, D1      ; Remove the first 4 bits (1 digit) of D1
+        LSR.W   #8, D1      ; Get the first hex digit of D1
+        LSR.W   #4, D1      
+        ConvertHtoA D1      ; Convert D1 to a character
+        MOVE.B  #6, D0      ; Read first digit
+        TRAP    #15         ; Execute output
+        
+        MOVE.W  A2, D1    ; Move A2 into D1
+        LSL.W   #8, D1      ; Remove the first 8 bits (2 digits) of D1
+        LSR.W   #8, D1      ; Get the first hex digit of D1
+        LSR.W   #4, D1      
+        ConvertHtoA D1      ; Convert D1 to a character
+        MOVE.B  #6, D0      ; Read first digit
+        TRAP    #15         ; Execute output
+        
+        MOVE.W  A2, D1    ; Move A2 into D1
+        LSL.W   #8, D1      ; Remove the first 8 bits (2 digits) of D1
+        LSL.W   #4, D1      ; Remove the first 4 bits (1 more digit) of D1
+        LSR.W   #8, D1      ; Get the first hex digit of D1
+        LSR.W   #4, D1      
+        ConvertHtoA D1      ; Convert D1 to a character
+        MOVE.B  #6, D0      ; Read first digit
+        TRAP    #15         ; Execute output       
+        ENDM
 printComma:    MACRO
         LEA     oComma, A1     
         MOVE.B  #14,D0          
@@ -673,7 +735,7 @@ space:      MACRO
         MOVE.B  #14,D0          
         TRAP    #15
         ENDM
-tab:      MACRO
+tab:       MACRO
         LEA     oTab, A1
         MOVE.B  #14,D0          
         TRAP    #15
@@ -704,15 +766,17 @@ main:   LEA     rSTART, A1  ; Request starting address
         MOVE.B  #13, D0
         TRAP    #15
         readInput   D2      ; Read 4 digit hex input
-        MOVE.W  D2, ($500)  ; Store at mem location $500
+        MOVE.W  D2, ($990)  ; Store at mem location $990
         newline
         newline
         
 goLoop: MOVE.L  #0, D1
-        MOVE.W  ($500), D1
+        MOVE.W  ($990), D1
         MOVE.L  A2, D2
         CMP.L   D2, D1    ; Check if the loop is over
         BLE     endSim      ; A2 is past the loop start if this is reached
+        printAdr
+        tab
         JSR     identifyOpcode  ; Decode what is at A2
         MOVE.W  (A2)+, D4   ; Increment A2 (D1 isn't relevant)
         newline
@@ -813,7 +877,7 @@ split110:
         BEQ     decodeAND
         BTST    #$6, D3
         BEQ     decodeAND
-        BRA     decodeMULS  ; All 3 positions (8, 9, 10) were set
+        BRA     decodULS  ; All 3 positions (8, 9, 10) were set
 
 split111: 
         BTST    #$3, D3     ; Check 13th bit
@@ -959,6 +1023,7 @@ decodeMULS:
         LEA     oMULS, A1     
         MOVE.B  #14,D0          
         TRAP    #15
+        CLR     D7
         prepareAdrMode  #$1, (A2)
         decodeAdrMode   (A2), D1
         printComma
@@ -976,6 +1041,7 @@ decodeDIVU:
         LEA     oDIVU, A1     
         MOVE.B  #14,D0          
         TRAP    #15
+        CLR     D7
         prepareAdrMode  #$1, (A2)
         decodeAdrMode   (A2), D1
         printComma
@@ -994,7 +1060,6 @@ decodeLEA:
         LEA     oLEA, A1     
         MOVE.B  #14,D0          
         TRAP    #15
-        
         LEA     oBlank, A1     
         MOVE.B  #14,D0          
         TRAP    #15
@@ -1269,8 +1334,36 @@ decodeBRA:
         printSign
         printBranch     (A2)
         RTS                 ; Return from decodeBRA subroutine
+        
+; ------------------------------------------------------------
+; 17. "decodeImmediate" subroutine
+; AUTHOR
+;
+; TODO: DESCRIPTION
+; ------------------------------------------------------------
+decodeImmediate:
+        LEA     oADDI, A1     
+        MOVE.B  #14,D0          
+        TRAP    #15
+        JSR     outputData
+        decodeSizeLow   (A2)
+        CMP.B   #1, D7
+        BEQ     decodeImmediateLong
+        printAdr
+        tab
+        MOVE.W  (A2)+, D4   ; Increment A2 (D1 isn't relevant)
 
-
+        BRA     decodeImmediateComp
+decodeImmediateLong:
+        printAdr
+        tab
+        MOVE.W  (A2)+, D4   ; Increment A2 (D1 isn't relevant)
+        
+        printAdr
+        MOVE.W  (A2)+, D4   ; Increment A2 (D1 isn't relevant)
+        
+decodeImmediateComp:
+        RTS                 ; Return from decodeDIVU subroutine
 
 
 ; ========================================================================
